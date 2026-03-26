@@ -1,0 +1,2638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+<title>NOTAM Flight Analyser</title>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="NOTAM Brief"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0f2340"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f2340'/><text x='50' y='62' font-size='40' text-anchor='middle' fill='white'>✈</text><text x='50' y='85' font-size='14' text-anchor='middle' fill='%234ecb80' font-weight='bold'>NOTAM</text></svg>"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#eef1f5;--surface:#ffffff;--surface2:#f7f9fb;
+  --border:#d0dae6;--border2:#b8c8d8;
+  --text:#1c2b3a;--text2:#4a6070;--text3:#8a9aaa;
+  --red:#c0392b;--red-bg:#fdf2f1;--red-border:#f5c0bb;
+  --amber:#c47a00;--amber-bg:#fdf8ee;--amber-border:#f0d080;
+  --green:#1a7a46;--green-bg:#f0faf4;--green-border:#90d4aa;
+  --blue:#1a5fa0;--blue-bg:#f0f6fd;--blue-border:#90bce8;
+  --navy:#0f2340;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;flex-direction:column;font-size:14px;line-height:1.5;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:54px;background:var(--navy);flex-shrink:0;z-index:200}
+.hdr-brand{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:34px;height:34px;border:1.5px solid rgba(255,255,255,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.hdr-title{font-family:var(--sans);font-size:17px;font-weight:700;letter-spacing:1.5px;color:#ffffff;text-transform:uppercase}
+.hdr-sub{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1.5px;margin-top:2px}
+.hdr-right{display:flex;align-items:center;gap:14px}
+.hdr-clock{font-family:var(--mono);font-size:13px;color:rgba(255,255,255,0.7);letter-spacing:2px}
+.hdr-dot{width:7px;height:7px;border-radius:50%;background:#4ecb80;box-shadow:0 0 6px #4ecb80;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.btn{font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:.5px;padding:7px 14px;border-radius:5px;cursor:pointer;transition:all .18s;display:none}
+.btn-ghost{border:1.5px solid rgba(255,255,255,0.3);background:transparent;color:rgba(255,255,255,0.8)}
+.btn-ghost:hover{border-color:rgba(255,255,255,0.7);color:#fff}
+.btn-save{border:1.5px solid #4ecb80;background:rgba(78,203,128,0.15);color:#4ecb80;font-weight:600}
+.btn-save:hover{background:rgba(78,203,128,0.25)}
+.btn.visible{display:block}
+
+/* SUB-NAV */
+.subnav{display:flex;align-items:stretch;background:#1a3a6a;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0;z-index:190}
+.subnav-tab{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:0 22px;height:38px;display:flex;align-items:center;gap:7px;cursor:pointer;color:rgba(255,255,255,0.5);border-bottom:3px solid transparent;transition:all .18s}
+.subnav-tab:hover{color:rgba(255,255,255,0.8)}
+.subnav-tab.active{color:#ffffff;border-bottom-color:#4ecb80}
+.subnav-badge{font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:10px;font-weight:700}
+.subnav-badge.populated{background:rgba(78,203,128,0.3);color:#4ecb80}
+
+/* VIEWS */
+.view{flex:1;overflow:hidden;display:none}
+.view.active{display:flex;flex-direction:column}
+#dutyView{overflow-y:auto}
+#perfView{overflow-y:auto;background:var(--bg)}
+#fuelView{overflow-y:auto;background:var(--bg)}
+#uploadView{align-items:center;justify-content:flex-start;overflow-y:auto;padding:32px 24px}
+
+/* UPLOAD */
+.upload-container{width:100%;max-width:820px;margin:0 auto}
+.upload-title{font-size:22px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.upload-subtitle{font-size:14px;color:var(--text2);margin-bottom:28px;line-height:1.6}
+.upload-zone{border:2px dashed var(--border2);border-radius:10px;padding:40px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);position:relative}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:var(--blue-bg)}
+.upload-zone.ready{border-color:var(--green);background:var(--green-bg);border-style:solid}
+.uz-icon{font-size:36px;margin-bottom:12px;display:block}
+.uz-label{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px}
+.uz-hint{font-size:12px;color:var(--text3)}
+.uz-filename{font-family:var(--mono);font-size:11px;color:var(--green);margin-top:8px;font-weight:500;word-break:break-all}
+.uz-clear{position:absolute;top:10px;right:12px;font-size:16px;color:var(--text3);cursor:pointer;line-height:1;display:none}
+.uz-clear:hover{color:var(--red)}
+.upload-zone.ready .uz-clear{display:block}
+.info-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+@media(max-width:640px){.info-row{grid-template-columns:1fr}}
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.ic-head{font-size:11px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.ic-body{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* API KEY */
+.api-key-card{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px}
+.api-key-label{font-size:11px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.api-key-row{display:flex;gap:8px;align-items:center}
+.api-key-input{flex:1;font-family:var(--mono);font-size:13px;padding:8px 12px;border:1.5px solid var(--border2);border-radius:6px;background:#fff;color:var(--text);outline:none;transition:border-color .15s}
+.api-key-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,95,160,.12)}
+.api-key-hint{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5}
+
+/* PROCESSING */
+#procView{align-items:center;justify-content:center}
+.proc-box{text-align:center;max-width:380px;padding:40px 24px}
+.spinner-wrap{width:72px;height:72px;margin:0 auto 24px;position:relative}
+.spinner{width:72px;height:72px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 0.9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proc-box h2{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.proc-box p{font-size:13px;color:var(--text2);margin-bottom:20px}
+.prog-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.prog-fill{height:100%;background:var(--navy);border-radius:2px;transition:width .6s ease}
+.prog-fill.pulsing{animation:progPulse 1.5s ease-in-out infinite}
+@keyframes progPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.prog-label{font-family:var(--mono);font-size:11px;color:var(--text3);text-align:left}
+.proc-docs{display:flex;gap:10px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.proc-doc{font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);font-family:var(--mono)}
+
+/* ERROR */
+#errView{align-items:center;justify-content:center}
+.err-box{background:var(--red-bg);border:1.5px solid var(--red-border);border-radius:10px;padding:36px;text-align:center;max-width:480px;margin:24px}
+.err-box h3{font-size:17px;font-weight:700;color:var(--red);margin-bottom:10px}
+.err-box p{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px}
+.btn-retry{font-family:var(--sans);font-size:13px;font-weight:600;padding:10px 20px;border:1.5px solid var(--red);border-radius:6px;background:transparent;color:var(--red);cursor:pointer}
+
+/* RESULTS */
+#resultsView{flex-direction:row}
+.left-panel{width:420px;flex-shrink:0;background:var(--surface);border-right:1.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.right-panel{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%}
+
+/* FLIGHT STRIP */
+.flight-strip{padding:14px 16px;border-bottom:1.5px solid var(--border);flex-shrink:0;background:var(--navy)}
+.fs-row1{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.fs-fn{font-size:22px;font-weight:700;color:#ffffff;letter-spacing:2px}
+.fs-status{font-size:11px;font-weight:700;letter-spacing:1px;padding:5px 12px;border-radius:4px;text-transform:uppercase}
+.fs-status.go{background:rgba(78,203,128,0.2);color:#4ecb80;border:1.5px solid #4ecb80}
+.fs-status.caution{background:rgba(240,165,0,0.2);color:#f0c040;border:1.5px solid #f0c040}
+.fs-status.nogo{background:rgba(230,100,90,0.2);color:#e06458;border:1.5px solid #e06458}
+.fs-row2{font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px;font-family:var(--mono)}
+.fs-times{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.fs-time{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:5px;padding:6px 10px}
+.fs-time-label{font-size:9px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;font-family:var(--mono)}
+.fs-time-val{font-size:13px;color:#ffffff;font-family:var(--mono);font-weight:500}
+.fs-window{background:rgba(255,200,60,0.12);border:1px solid rgba(255,200,60,0.3);border-radius:5px;padding:6px 10px;font-size:11px;color:#f0c040;font-family:var(--mono)}
+
+/* COUNT BAR */
+.count-bar{display:flex;border-bottom:1.5px solid var(--border);flex-shrink:0}
+.count-cell{flex:1;padding:10px 6px;text-align:center;cursor:pointer;transition:background .15s;border-right:1px solid var(--border)}
+.count-cell:last-child{border-right:none}
+.count-cell:hover{background:var(--surface2)}
+.count-cell.active{background:var(--surface2);box-shadow:inset 0 -2px 0 var(--navy)}
+.count-num{font-size:22px;font-weight:700;line-height:1;letter-spacing:-0.5px}
+.count-num.red{color:var(--red)}.count-num.amber{color:var(--amber)}.count-num.blue{color:var(--blue)}.count-num.grey{color:var(--text2)}
+.count-lbl{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1.5px solid var(--border);flex-shrink:0;overflow-x:auto;background:var(--surface2)}
+.tabs::-webkit-scrollbar{height:0}
+.tab{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:9px 13px;cursor:pointer;white-space:nowrap;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy);background:var(--surface)}
+
+/* NOTAM LIST */
+.notam-list{flex:1;overflow-y:auto;padding:8px}
+.notam-list::-webkit-scrollbar{width:4px}
+.notam-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.phase-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;padding:10px 4px 4px}
+.notam-card{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.notam-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.notam-card.expanded{border-color:var(--navy);box-shadow:0 2px 12px rgba(15,35,64,0.1)}
+.nc-header{display:flex;align-items:flex-start;gap:0;padding:0}
+.nc-sev-bar{width:5px;flex-shrink:0;align-self:stretch;min-height:22px}
+.nc-sev-bar.critical{background:var(--red)}.nc-sev-bar.significant{background:var(--amber)}.nc-sev-bar.advisory{background:var(--blue)}
+.nc-inner{flex:1;padding:10px 12px;min-width:0}
+.nc-id-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.nc-id{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.nc-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.8px}
+.nc-badge.critical{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.nc-badge.significant{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.nc-badge.advisory{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.nc-subject{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:5px}
+.nc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.nc-tag{font-size:10px;padding:2px 6px;border-radius:3px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.nc-tag.kw{background:#fff8e6;color:#a06010;border-color:#f0d080}
+.nc-body{padding:0 12px 12px 17px;display:none;border-top:1px solid var(--border)}
+.nc-body.open{display:block}
+.nc-fulltext{font-family:var(--mono);font-size:11px;color:var(--text);line-height:1.75;background:var(--surface2);border-radius:5px;padding:10px 12px;margin:10px 0;white-space:pre-wrap;word-break:break-all;border:1px solid var(--border)}
+.nc-section-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.nc-kw-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.nc-kw-chip{font-size:10px;padding:2px 7px;border-radius:3px;background:#fff8e6;color:#a06010;border:1px solid #f0d080;font-weight:500}
+.nc-validity{font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.7;font-family:var(--mono)}
+.nc-validity span{color:var(--text);font-weight:500}
+.nc-map-btn{font-size:11px;font-weight:600;padding:6px 12px;border:1.5px solid var(--navy);border-radius:5px;background:transparent;color:var(--navy);cursor:pointer;transition:all .15s}
+.nc-map-btn:hover{background:var(--navy);color:#fff}
+
+/* CONTROLS */
+.ctrl-panel{padding:10px 14px;border-bottom:1.5px solid var(--border);flex-shrink:0;background:var(--surface2);display:flex;flex-direction:column;gap:8px}
+.ctrl-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctrl-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;width:28px;flex-shrink:0}
+.ctrl-chips{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.rwy-chip{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 9px;border-radius:4px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.rwy-chip:hover{border-color:var(--navy);color:var(--navy)}
+.rwy-chip.active{border-color:var(--navy);background:var(--navy);color:#fff}
+.rwy-chip.all-chip{border-color:var(--border2)}
+.fl-stepper{display:flex;align-items:center;gap:6px}
+.fl-btn{width:26px;height:26px;border-radius:4px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;font-weight:600}
+.fl-btn:hover{border-color:var(--navy);color:var(--navy)}
+.fl-btn:disabled{opacity:.35;cursor:not-allowed}
+.fl-display{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--navy);min-width:52px;text-align:center;padding:3px 6px;border-radius:4px;background:var(--surface);border:1.5px solid var(--border)}
+.fl-filed{font-size:10px;color:var(--text3);margin-left:4px}
+.fl-changed{color:var(--amber)!important}
+.ctrl-divider{height:1px;background:var(--border);margin:0 -14px}
+.filtered-hdr{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:11px;font-weight:600;color:var(--text3);border:1.5px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--surface2)}
+.filtered-item{padding:8px 12px;border-radius:5px;margin-bottom:4px;background:var(--surface2);border:1px solid var(--border)}
+.fi-id{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px}
+.fi-text{font-size:11px;color:var(--text3);text-decoration:line-through;word-break:break-all;opacity:.7}
+.fi-reason{font-size:11px;color:var(--text2);margin-top:3px}
+.empty-state{padding:32px 16px;text-align:center}
+.es-icon{font-size:28px;margin-bottom:10px}
+.empty-state p{font-size:12px;color:var(--text3);letter-spacing:.5px}
+
+/* MAP */
+.map-legend{position:absolute;bottom:20px;right:12px;z-index:400;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;box-shadow:0 2px 12px rgba(0,0,0,0.1)}
+.ml-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.ml-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:11px;color:var(--text2)}
+.ml-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* SAVE BANNER */
+.save-banner{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:500;background:var(--green-bg);border:1.5px solid var(--green-border);border-radius:7px;padding:10px 16px;display:none;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.12);white-space:nowrap}
+.save-banner.show{display:flex}
+
+/* LEAFLET */
+.leaflet-container{background:#a8c8e8!important}
+.leaflet-popup-content-wrapper{background:var(--surface)!important;border:1.5px solid var(--border)!important;border-radius:8px!important;box-shadow:0 4px 20px rgba(0,0,0,.15)!important;padding:0!important}
+.leaflet-popup-content{margin:0!important;min-width:210px;max-width:290px}
+.leaflet-popup-tip{background:var(--surface)!important}
+.popup-inner{padding:14px}
+.popup-sev{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px}
+.popup-sev.critical{color:var(--red)}.popup-sev.significant{color:var(--amber)}.popup-sev.advisory{color:var(--blue)}
+.popup-id{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:3px}
+.popup-subject{font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.35}
+.popup-valid{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:10px}
+.popup-btn{font-size:11px;font-weight:600;padding:6px 10px;border:1.5px solid var(--navy);border-radius:5px;background:transparent;color:var(--navy);cursor:pointer;width:100%;transition:all .15s}
+.popup-btn:hover{background:var(--navy);color:#fff}
+.wpt-tooltip{background:rgba(15,35,64,0.85)!important;color:#fff!important;border:none!important;border-radius:3px!important;padding:2px 6px!important;font-family:var(--mono)!important;font-size:9px!important;font-weight:600!important;letter-spacing:.5px!important;box-shadow:0 1px 4px rgba(0,0,0,0.3)!important}
+.wpt-tooltip::before{border-top-color:rgba(15,35,64,0.85)!important}
+
+/* PERF VIEW */
+#perfView.active{display:block}
+.perf-container{max-width:960px;margin:0 auto;padding:20px 24px}
+.perf-sec{margin-top:24px}.perf-sec:first-child{margin-top:0}
+.perf-sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.perf-sec-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;white-space:nowrap}
+.perf-sec-line{flex:1;height:1px;background:var(--border)}
+.perf-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;overflow:hidden}
+.perf-card-hdr{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.perf-kv{display:flex;justify-content:space-between;align-items:center;padding:9px 20px;border-top:1px solid var(--border)}
+.perf-kv-label{font-size:12px;color:var(--text2)}
+.perf-kv-val{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text)}
+.perf-kv-val.accent-amber{color:var(--amber)}.perf-kv-val.accent-green{color:var(--green)}.perf-kv-val.accent-red{color:var(--red)}.perf-kv-val.accent-blue{color:var(--blue)}
+.perf-stat-big{font-family:var(--mono);font-size:36px;font-weight:800;line-height:1}
+.perf-stat-unit{font-size:13px;font-weight:400;color:var(--text2);margin-left:4px}
+.perf-stat-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:5px}
+.perf-bar-row{padding:10px 20px;border-top:1px solid var(--border)}
+.perf-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.perf-bar-name{font-size:12px;color:var(--text2)}
+.perf-bar-right{display:flex;align-items:center;gap:8px}
+.perf-bar-val{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text)}
+.perf-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.perf-pill-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.perf-pill-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.perf-pill-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.perf-bar-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.perf-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.perf-bar-max{font-size:10px;color:var(--text3);text-align:right;margin-top:3px;font-family:var(--mono)}
+.perf-speed-row{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-top:1px solid var(--border)}
+.perf-speed-row.primary{background:var(--blue-bg)}
+.perf-speed-row.accent-green{background:var(--green-bg)}
+.perf-speed-row.divider{border-top:2px solid var(--border)}
+.perf-speed-left{display:flex;align-items:center;gap:10px}
+.perf-speed-name{font-size:13px;font-weight:500;color:var(--text);min-width:160px}
+.perf-speed-name.bold{font-weight:700}
+.perf-speed-delta{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.perf-speed-kt{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text)}
+.perf-speed-kt.blue{color:var(--blue)}.perf-speed-kt.green{color:var(--green)}
+.perf-dd-table{width:100%;border-collapse:collapse}
+.perf-dd-table th{background:var(--navy);color:#e0f2fe;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;padding:9px 16px;text-align:center}
+.perf-dd-table th:first-child{text-align:left}
+.perf-dd-table td{padding:10px 16px;font-family:var(--mono);font-size:13px;text-align:center;border-bottom:1px solid var(--border)}
+.perf-dd-table td:first-child{text-align:left;font-family:var(--sans);font-size:12px;color:var(--text2)}
+.perf-dd-table .big{font-size:16px;font-weight:700}
+.perf-empty{text-align:center;padding:60px 24px;color:var(--text3)}
+.perf-empty-icon{font-size:40px;margin-bottom:12px}
+.perf-empty-title{font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.perf-ramp-input{font-family:var(--mono);font-size:16px;font-weight:600;width:140px;padding:6px 10px;border:2px solid var(--blue);border-radius:6px;background:#fff;color:var(--text);outline:none}
+.perf-ramp-btn{font-family:var(--sans);font-size:12px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;border:none}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ═══ ONE AIR FTL CALCULATOR ═══ */
+#dutyView{
+  --ftl-bg:#f0f4f8;--ftl-s0:#fff;--ftl-s1:#f8fafc;--ftl-s2:#eef2f7;
+  --ftl-bd:#d1dbe8;--ftl-bd2:#b8c7da;
+  --ftl-blue:#1a56db;--ftl-bluel:#dbeafe;
+  --ftl-navy:#1e3a5f;--ftl-text:#1e293b;--ftl-t2:#475569;--ftl-t3:#94a3b8;
+  --ftl-green:#16a34a;--ftl-gbg:#dcfce7;--ftl-gbd:#86efac;
+  --ftl-red:#dc2626;--ftl-rbg:#fee2e2;--ftl-rbd:#fca5a5;
+  --ftl-amb:#d97706;--ftl-abg:#fef3c7;--ftl-abd:#fcd34d;
+  --ftl-yel:#ca8a04;--ftl-ybg:#fefce8;--ftl-ybd:#fde047;
+  --ftl-r:6px;--ftl-sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  overflow-y:auto;background:var(--ftl-bg);color:var(--ftl-text);font-size:14px;
+}
+.auto-populated-note{background:var(--ftl-gbg);border:1px solid var(--ftl-gbd);padding:9px 14px;font-size:11px;color:var(--ftl-green);display:none;align-items:center;gap:8px;flex-shrink:0}
+.auto-populated-note.show{display:flex}
+#dutyView .sbanner{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--ftl-bd);background:var(--ftl-s0);gap:12px;flex-shrink:0}
+#dutyView .spill{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 14px;border-radius:20px}
+#dutyView .s-go{background:var(--ftl-gbg);color:var(--ftl-green);border:1px solid var(--ftl-gbd)}
+#dutyView .s-ctn{background:var(--ftl-ybg);color:var(--ftl-yel);border:1px solid var(--ftl-ybd)}
+#dutyView .s-ngo{background:var(--ftl-rbg);color:var(--ftl-red);border:1px solid var(--ftl-rbd)}
+#dutyView .s-unk{background:var(--ftl-bluel);color:var(--ftl-blue);border:1px solid #93c5fd}
+#dutyView .sinfo{font-size:12px;color:var(--ftl-t2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dutyView .ftl-main{display:grid;grid-template-columns:330px 1fr;min-height:calc(100vh - 92px)}
+#dutyView .lp{background:var(--ftl-s0);border-right:1px solid var(--ftl-bd);padding:14px;overflow-y:auto;max-height:calc(100vh - 92px);position:sticky;top:0}
+#dutyView .rp{padding:14px;background:var(--ftl-bg)}
+#dutyView .card{background:var(--ftl-s0);border:1px solid var(--ftl-bd);border-radius:var(--ftl-r);padding:14px;margin-bottom:12px;box-shadow:var(--ftl-sh)}
+#dutyView .ct{font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--ftl-blue);text-transform:uppercase;margin-bottom:11px;padding-bottom:8px;border-bottom:2px solid var(--ftl-bluel);display:flex;align-items:center;gap:7px}
+#dutyView .ct::before{content:'';width:3px;height:12px;background:var(--ftl-blue);border-radius:2px;flex-shrink:0}
+#dutyView .fl{margin-bottom:10px}
+#dutyView .fl label{display:block;font-size:11px;font-weight:600;color:var(--ftl-t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+#dutyView .fl input,#dutyView .fl select{width:100%;background:#fff;border:1.5px solid var(--ftl-bd2);color:var(--ftl-text);font-family:var(--mono);font-size:15px;padding:7px 10px;border-radius:var(--ftl-r);outline:none;transition:border-color .15s;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)}
+#dutyView .fl input:focus,#dutyView .fl select:focus{border-color:var(--ftl-blue);box-shadow:0 0 0 3px rgba(26,86,219,.12)}
+#dutyView .th{display:grid;grid-template-columns:78px 1fr 1fr;gap:6px;margin-bottom:4px}
+#dutyView .tc{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ftl-t3);text-align:center}
+#dutyView .tr{display:grid;grid-template-columns:78px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px}
+#dutyView .trl{font-size:11px;font-weight:600;color:var(--ftl-t2);text-align:right;padding-right:6px}
+#dutyView .tr input{font-size:14px;padding:6px 8px}
+#dutyView .rrow-r{display:flex;gap:5px;margin-bottom:8px}
+#dutyView .rb{flex:1;background:var(--ftl-s1);border:1.5px solid var(--ftl-bd2);color:var(--ftl-t2);padding:7px 4px;text-align:center;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.03em;border-radius:var(--ftl-r);transition:all .14s;line-height:1.3}
+#dutyView .rb:hover{border-color:var(--ftl-blue);color:var(--ftl-blue);background:var(--ftl-bluel)}
+#dutyView .rb.on{background:var(--ftl-blue);color:#fff;border-color:var(--ftl-blue);font-weight:700;box-shadow:0 1px 4px rgba(26,86,219,.3)}
+#dutyView .calcbtn{width:100%;background:var(--ftl-blue);color:#fff;border:none;padding:13px;font-family:var(--sans);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:var(--ftl-r);margin-top:8px;transition:all .14s;box-shadow:0 2px 6px rgba(26,86,219,.35)}
+#dutyView .calcbtn:hover{background:#1d4ed8}
+#dutyView .rrow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--ftl-s2)}
+#dutyView .rrow:last-child{border-bottom:none}
+#dutyView .rl{font-size:11px;font-weight:600;color:var(--ftl-t2);text-transform:uppercase;letter-spacing:.04em}
+#dutyView .rv{font-family:var(--mono);font-size:20px;color:var(--ftl-navy)}
+#dutyView .rv.ok{color:var(--ftl-green)}
+#dutyView .rv.wn{color:var(--ftl-amb)}
+#dutyView .rv.ov{color:var(--ftl-red)}
+#dutyView .rsm{font-size:11px;color:var(--ftl-t3);line-height:1.4}
+#dutyView .pbw{margin:8px 0 3px}
+#dutyView .pbt{width:100%;height:8px;background:var(--ftl-s2);border-radius:4px;overflow:hidden}
+#dutyView .pbf{height:100%;border-radius:4px;transition:width .4s,background .3s}
+#dutyView .pbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--ftl-t3);margin-top:3px}
+#dutyView .bst{text-align:center;padding:16px;border-radius:var(--ftl-r);margin-bottom:12px;box-shadow:var(--ftl-sh)}
+#dutyView .bsl{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:5px}
+#dutyView .bsv{font-family:var(--mono);font-size:30px;font-weight:700;letter-spacing:.04em}
+#dutyView .bsd{font-size:12px;margin-top:6px;color:var(--ftl-t2)}
+#dutyView .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+#dutyView .g2 .card{margin-bottom:0}
+#dutyView .al{padding:9px 12px;border-radius:var(--ftl-r);font-size:11px;margin-bottom:8px;line-height:1.6}
+#dutyView .al-w{background:var(--ftl-ybg);border:1px solid var(--ftl-abd);color:#92400e}
+#dutyView .al-ok{background:var(--ftl-gbg);border:1px solid var(--ftl-gbd);color:#14532d}
+#dutyView .al-no{background:var(--ftl-rbg);border:1px solid var(--ftl-rbd);color:#991b1b}
+#dutyView .al-i{background:var(--ftl-bluel);border:1px solid #93c5fd;color:#1e3a5f}
+#dutyView .tip{font-size:10px;color:var(--ftl-t3);line-height:1.5;margin-top:3px}
+#dutyView .sep{height:1px;background:var(--ftl-bd);margin:14px 0}
+#dutyView .ci{display:grid;grid-template-columns:1fr 90px 46px;gap:6px;align-items:center;margin-bottom:8px}
+#dutyView .ci input{background:#fff;border:1.5px solid var(--ftl-bd2);color:var(--ftl-text);font-family:var(--mono);font-size:14px;padding:6px 8px;border-radius:var(--ftl-r);outline:none;width:100%}
+#dutyView .ci-lim{font-family:var(--mono);font-size:11px;color:var(--ftl-t3);text-align:center}
+#dutyView .ci-pct{font-family:var(--mono);font-size:12px;font-weight:700;text-align:right}
+#dutyView .sec-head{font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--ftl-navy);text-transform:uppercase;margin-bottom:9px;padding:6px 10px;background:var(--ftl-bluel);border-radius:4px;border-left:3px solid var(--ftl-blue)}
+#dutyView .ftl-footer{text-align:center;font-size:10px;color:var(--ftl-t3);padding:12px 18px;border-top:1px solid var(--ftl-bd);background:var(--ftl-s0)}
+#dutyView .ftl-footer span{color:var(--ftl-blue);font-weight:600}
+#dutyView table.ft{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;margin-top:6px}
+#dutyView table.ft th{background:var(--ftl-navy);color:#e0f2fe;padding:6px;text-align:center;border:1px solid var(--ftl-bd);font-size:9px;font-weight:600;letter-spacing:.06em}
+#dutyView table.ft td{padding:5px 6px;text-align:center;border:1px solid var(--ftl-bd);color:var(--ftl-t2);background:#fff}
+#dutyView table.ft tr:hover td{background:var(--ftl-bluel)}
+#dutyView table.ft td.hl{background:#dbeafe;color:var(--ftl-blue);font-weight:700;border-color:#93c5fd}
+#dutyView table.ft .rl{text-align:right;color:var(--ftl-text);font-size:10px;white-space:nowrap;font-weight:600;background:var(--ftl-s1)}
+@media(max-width:768px){#dutyView .ftl-main{grid-template-columns:1fr}#dutyView .lp{position:static;max-height:none}#dutyView .g2{grid-template-columns:1fr}}
+
+
+/* DUAL UPLOAD */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:840px){.upload-grid{grid-template-columns:1fr}}
+.upload-zone-wrap{position:relative}
+.upload-zone-num{position:absolute;top:-8px;left:14px;background:var(--navy);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 10px;border-radius:10px;z-index:1;font-family:var(--mono)}
+.upload-zone.compact{padding:28px 16px}
+.upload-zone .uz-icon{font-size:28px;margin-bottom:8px}
+.upload-zone .uz-label{font-size:12px}
+.upload-zone .uz-hint{font-size:11px}
+.analyse-btn{width:100%;padding:14px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:var(--sans);font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.5px;margin-bottom:16px}
+.analyse-btn:hover:not(:disabled){background:#1a3a6a}
+.analyse-btn:disabled{background:var(--border);color:var(--text3);cursor:not-allowed}
+.upload-status{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;font-size:11px;margin-top:8px;font-family:var(--mono)}
+.upload-status.ready{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.upload-status.info{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-logo">✈</div>
+    <div>
+      <div class="hdr-title">NOTAM Analyser</div>
+      <div class="hdr-sub">AI-POWERED PRE-FLIGHT BRIEFING INTELLIGENCE</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-dot"></div>
+    <div class="hdr-clock" id="clock">--:--:--Z</div>
+    <button class="btn btn-save" id="btnSave" onclick="saveOfflineBriefing()">⬇ Save Offline Brief</button>
+    <span id="offlineBadge" style="display:none;font-size:10px;font-weight:700;color:var(--green);background:var(--green-bg);border:1px solid var(--green-border);padding:3px 8px;border-radius:4px;letter-spacing:.5px">✓ OFFLINE READY</span>
+    <button class="btn btn-ghost" id="btnNew" onclick="resetApp()">↩ New Brief</button>
+  </div>
+</header>
+
+<!-- SUB-NAV -->
+<nav class="subnav">
+  <div class="subnav-tab active" id="snNotam" onclick="switchPage('notam')">✈ &nbsp;NOTAM Brief</div>
+  <div class="subnav-tab" id="snDuty" onclick="switchPage('duty')">⏱ &nbsp;Duty Planner <span class="subnav-badge" id="dutyBadge">EASA</span></div>
+  <div class="subnav-tab" id="snPerf" onclick="switchPage('perf')">⚡ &nbsp;Performance <span class="subnav-badge" id="perfBadge">W&amp;P</span></div>
+  <div class="subnav-tab" id="snFuel" onclick="switchPage('fuel')">📊 &nbsp;FL/Fuel <span class="subnav-badge" id="fuelBadge">WIND</span></div>
+</nav>
+
+<!-- UPLOAD VIEW -->
+<div class="view active" id="uploadView">
+  <div class="upload-container">
+    <div style="margin-bottom:28px">
+      <div class="upload-title">Pre-Flight NOTAM Analysis</div>
+      <div class="upload-subtitle">Upload your flight plan and NOTAM pack for deterministic, client-side extraction. No AI — every value parsed directly from your documents.</div>
+    </div>
+
+    <!-- COMBINED UPLOAD -->
+    <div class="upload-zone-wrap" style="margin-bottom:12px">
+      <div class="upload-zone-num">COMBINED BRIEFING PACK</div>
+      <div class="upload-zone compact" id="dzCOMBI" onclick="document.getElementById('fiCOMBI').click()" style="border-color:var(--navy);border-width:2px">
+        <span class="uz-icon">📦</span>
+        <div class="uz-label">Single Document (All-in-One)</div>
+        <div class="uz-hint">Upload one PDF containing OFP + NOTAMs + Wind chart<br>The app auto-detects each section. Up to 250+ pages — no limit.</div>
+        <div class="uz-filename" id="fnCOMBI"></div>
+        <span class="uz-clear" id="clrCOMBI" onclick="clearFileN(event,'COMBI')">✕</span>
+      </div>
+      <input type="file" id="fiCOMBI" accept="application/pdf" style="display:none"/>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1.5px">OR UPLOAD SEPARATELY</div>
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+    </div>
+
+    <!-- SEPARATE UPLOAD ZONES -->
+    <div class="upload-grid">
+      <div class="upload-zone-wrap">
+        <div class="upload-zone-num">1 — FLIGHT PLAN</div>
+        <div class="upload-zone compact" id="dzOFP" onclick="document.getElementById('fiOFP').click()">
+          <span class="uz-icon">✈️</span>
+          <div class="uz-label">OFP / Flight Plan</div>
+          <div class="uz-hint">Route, fuel, times, alternates<br>Usually 5–15 pages</div>
+          <div class="uz-filename" id="fnOFP"></div>
+          <span class="uz-clear" id="clrOFP" onclick="clearFileN(event,'OFP')">✕</span>
+        </div>
+        <input type="file" id="fiOFP" accept="application/pdf" style="display:none"/>
+      </div>
+      <div class="upload-zone-wrap">
+        <div class="upload-zone-num">2 — NOTAM PACK</div>
+        <div class="upload-zone compact" id="dzNOTAM" onclick="document.getElementById('fiNOTAM').click()">
+          <span class="uz-icon">📋</span>
+          <div class="uz-label">NOTAM Briefing</div>
+          <div class="uz-hint">NOTAM pages from your briefing pack<br>Can be 50–250 pages</div>
+          <div class="uz-filename" id="fnNOTAM"></div>
+          <span class="uz-clear" id="clrNOTAM" onclick="clearFileN(event,'NOTAM')">✕</span>
+        </div>
+        <input type="file" id="fiNOTAM" accept="application/pdf" style="display:none"/>
+      </div>
+      <div class="upload-zone-wrap">
+        <div class="upload-zone-num">3 — WIND CHART</div>
+        <div class="upload-zone compact" id="dzWIND" onclick="document.getElementById('fiWIND').click()">
+          <span class="uz-icon">🌬️</span>
+          <div class="uz-label">Wind / Cross Section</div>
+          <div class="uz-hint">Vertical cross section chart<br>Optional — for FL/Fuel analysis</div>
+          <div class="uz-filename" id="fnWIND"></div>
+          <span class="uz-clear" id="clrWIND" onclick="clearFileN(event,'WIND')">✕</span>
+        </div>
+        <input type="file" id="fiWIND" accept="application/pdf" style="display:none"/>
+      </div>
+    </div>
+
+    <div id="uploadStats" style="display:none"></div>
+
+    <button class="analyse-btn" id="btnAnalyse" disabled onclick="startAnalysis()">Upload OFP + NOTAM files to begin</button>
+
+    <div class="info-row">
+      <div class="info-card"><div class="ic-head">How It Works</div><div class="ic-body">100% client-side. Both files are parsed in your browser using regex extraction only — no AI, no API calls, no data leaves your device. Every number comes directly from your documents.</div></div>
+      <div class="info-card"><div class="ic-head">Smart Filtering</div><div class="ic-body">Client-side keyword scan reduces hundreds of NOTAMs to safety-relevant ones. 35 keywords including ILS, CLOSED, CRANE, DANGER, and more.</div></div>
+      <div class="info-card"><div class="ic-head">Offline Export</div><div class="ic-body">Save the result as a single HTML file for your EFB or iPad — works with no internet.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROCESSING VIEW -->
+<div class="view" id="procView">
+  <div class="proc-box">
+    <div class="spinner-wrap"><div class="spinner"></div></div>
+    <h2>Analysing Documents</h2>
+    <p>The AI is reading your flight documents,<br>extracting and filtering NOTAMs.</p>
+    <div class="proc-docs" id="procDocs"></div>
+    <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    <div class="prog-label" id="progLabel">Initialising...</div>
+  </div>
+</div>
+
+<!-- ERROR VIEW -->
+<div class="view" id="errView">
+  <div class="err-box">
+    <h3>⚠ Analysis Failed</h3>
+    <p id="errMsg">An error occurred during analysis.</p>
+    <button class="btn-retry" onclick="resetApp()">↩ Upload New Documents</button>
+  </div>
+</div>
+
+<!-- RESULTS VIEW -->
+<div class="view" id="resultsView">
+  <div class="left-panel">
+    <div class="flight-strip">
+      <div class="fs-row1">
+        <div class="fs-fn" id="fsFlightNum">—</div>
+        <div class="fs-status" id="fsStatus">—</div>
+      </div>
+      <div class="fs-row2" id="fsRoute">—</div>
+      <div class="fs-times">
+        <div class="fs-time"><div class="fs-time-label">STD — Sched Dep</div><div class="fs-time-val" id="fsStd">—</div></div>
+        <div class="fs-time"><div class="fs-time-label">STA — Sched Arr</div><div class="fs-time-val" id="fsSta">—</div></div>
+        <div class="fs-time" id="fsRegCell" style="display:none"><div class="fs-time-label">Registration</div><div class="fs-time-val" id="fsReg">—</div></div>
+      </div>
+      <div class="fs-window" id="fsWindow">⏱ NOTAM Window: —</div>
+      <div id="fplAgeWarning" style="display:none;margin-top:6px;padding:6px 10px;border-radius:5px;font-family:var(--mono);font-size:11px;font-weight:700"></div>
+    </div>
+    <div id="extractSummary" style="display:none;padding:8px 14px;background:rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.1);font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.55);line-height:1.8">
+      <span style="color:rgba(255,255,255,0.4);letter-spacing:1px;font-size:9px">EXTRACTED ▸ </span><span id="extractText"></span>
+    </div>
+    <div class="count-bar">
+      <div class="count-cell active" id="ccAll" onclick="filterSev('all')"><div class="count-num grey" id="cntAll">0</div><div class="count-lbl">Total</div></div>
+      <div class="count-cell" id="ccCritical" onclick="filterSev('critical')"><div class="count-num red" id="cntCrit">0</div><div class="count-lbl">Critical</div></div>
+      <div class="count-cell" id="ccSignificant" onclick="filterSev('significant')"><div class="count-num amber" id="cntSig">0</div><div class="count-lbl">Significant</div></div>
+      <div class="count-cell" id="ccAdvisory" onclick="filterSev('advisory')"><div class="count-num blue" id="cntAdv">0</div><div class="count-lbl">Advisory</div></div>
+    </div>
+    <div class="ctrl-panel" id="ctrlPanel" style="display:none">
+      <div class="ctrl-row" id="depRwyRow"><div class="ctrl-label">DEP</div><div class="ctrl-chips" id="depRwyChips"></div></div>
+      <div class="ctrl-divider"></div>
+      <div class="ctrl-row" id="arrRwyRow"><div class="ctrl-label">ARR</div><div class="ctrl-chips" id="arrRwyChips"></div></div>
+      <div class="ctrl-divider"></div>
+      <div class="ctrl-row"><div class="ctrl-label">FL</div><div class="fl-stepper"><button class="fl-btn" id="flMinus" onclick="changeFL(-1)">−</button><div class="fl-display" id="flDisplay">—</div><button class="fl-btn" id="flPlus" onclick="changeFL(+1)">+</button></div><span class="fl-filed" id="flFiled"></span></div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="notam-list" id="notamList"></div>
+  </div>
+  <div class="right-panel">
+    <div id="map"></div>
+    <div class="save-banner" id="saveBanner"><span style="font-size:12px;font-weight:600;color:var(--green)">✓ Offline briefing saved</span><span style="font-size:14px;color:var(--text3);cursor:pointer;padding:2px 6px" onclick="this.parentElement.classList.remove('show')">✕</span></div>
+    <div class="map-legend">
+      <div class="ml-title">NOTAM Severity</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#c0392b"></div>Critical</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#c47a00"></div>Significant</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#1a5fa0"></div>Advisory</div>
+      <div style="border-top:1px solid var(--border);margin:6px 0"></div>
+      <div class="ml-title">Airports</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#0a6e35"></div>Dep / Dest</div>
+      <div class="ml-row"><div style="width:10px;height:10px;background:#a04800;transform:rotate(45deg);flex-shrink:0"></div><span style="margin-left:3px">En-Route Alt</span></div>
+      <div class="ml-row"><div style="width:10px;height:10px;background:#0f4fa0;transform:rotate(45deg);flex-shrink:0"></div><span style="margin-left:3px">Dest Alternate</span></div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ═══ FL/FUEL VIEW ═══ -->
+<div class="view" id="fuelView">
+  <div style="max-width:960px;margin:0 auto;padding:20px 24px">
+    <div id="fuelContainer">
+      <div class="perf-empty">
+        <div class="perf-empty-icon">📊</div>
+        <div class="perf-empty-title">No wind chart loaded</div>
+        <div class="perf-empty-sub">Upload a vertical cross section PDF on the NOTAM Brief tab — wind analysis will appear here.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ONE AIR FTL CALCULATOR VIEW ═══ -->
+<div class="view" id="dutyView">
+  <div class="auto-populated-note" id="dutyAutoNote"><span>✓</span><span>Times pre-filled from flight analysis — <strong>STD → Off Block · STA → On Block</strong>. All fields remain editable.</span></div>
+  <div class="sbanner">
+    <div id="gsPill" class="spill s-unk">AWAITING INPUT</div>
+    <div class="sinfo" id="gsInfo">Enter crew details and flight times to calculate FTL compliance</div>
+  </div>
+  <div class="ftl-main">
+    <!-- LEFT PANEL -->
+    <div class="lp">
+      <div class="card">
+        <div class="ct">Crew Composition</div>
+        <div class="fl"><label>Number of Flight Crew</label>
+          <div class="rrow-r" id="gCrew">
+            <div class="rb on" onclick="setR('gCrew',this,'crewCount','2')">2 CREW<br><small style="font-size:9px;opacity:.7">BASIC</small></div>
+            <div class="rb"    onclick="setR('gCrew',this,'crewCount','3')">3 CREW<br><small style="font-size:9px;opacity:.7">+1 AUG</small></div>
+            <div class="rb"    onclick="setR('gCrew',this,'crewCount','4')">4 CREW<br><small style="font-size:9px;opacity:.7">+2 AUG</small></div>
+          </div>
+          <input type="hidden" id="crewCount" value="2">
+        </div>
+        <div id="augSection" style="display:none;">
+          <div class="fl"><label>In-Flight Rest Facility Class</label>
+            <div class="rrow-r" id="gRest">
+              <div class="rb"    onclick="setR('gRest',this,'restClass','1')">CLASS 1</div>
+              <div class="rb on" onclick="setR('gRest',this,'restClass','2')">CLASS 2</div>
+              <div class="rb"    onclick="setR('gRest',this,'restClass','3')">CLASS 3</div>
+            </div><input type="hidden" id="restClass" value="2">
+          </div>
+          <div class="fl"><label>Any sector &gt; 9 hrs continuous?</label>
+            <div class="rrow-r" id="gLS">
+              <div class="rb"    onclick="setR('gLS',this,'longSec','1')">YES (+1 HR)</div>
+              <div class="rb on" onclick="setR('gLS',this,'longSec','0')">NO</div>
+            </div><input type="hidden" id="longSec" value="0">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Flight Times</div>
+        <div class="tip" style="margin-bottom:9px;">FDP = off-block − 60 min (report) → on-block. <span id="ftlAutoHint" style="color:#16a34a;font-weight:600;display:none">✓ Auto-filled from flight plan.</span></div>
+        <div class="th"><div></div><div class="tc">SCHEDULED</div><div class="tc">ACTUAL</div></div>
+        <div class="tr"><div class="trl">Off Block</div><input type="time" id="schedOB" oninput="autoCalc()"><input type="time" id="actOB" oninput="autoCalc()"></div>
+        <div class="tr"><div class="trl">Landing</div><input type="time" id="schedLDG" oninput="autoCalc()"><input type="time" id="actLDG" oninput="autoCalc()"></div>
+        <div class="tr"><div class="trl">On Block</div><input type="time" id="schedONB" oninput="autoCalc()"><input type="time" id="actONB" oninput="autoCalc()"></div>
+        <div style="margin-top:9px;display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" id="nextDay" oninput="autoCalc()" style="width:16px;height:16px;">
+          <label for="nextDay" style="text-transform:none;letter-spacing:0;font-size:11px;cursor:pointer;font-weight:500;color:#475569;">On-block is next calendar day</label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Operational Parameters</div>
+        <div class="fl"><label>Number of Sectors This FDP</label>
+          <select id="sectors" oninput="autoCalc()"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8+</option></select>
+        </div>
+        <div class="fl"><label>Acclimatisation State</label>
+          <div class="rrow-r" id="gAcclim">
+            <div class="rb on" onclick="setR('gAcclim',this,'acclimState','A')">ACCLIMATISED</div>
+            <div class="rb"    onclick="setR('gAcclim',this,'acclimState','U')">UNKNOWN</div>
+          </div><input type="hidden" id="acclimState" value="A">
+        </div>
+        <div class="fl"><label>Night Duty? (encroaches 02:00–04:59)</label>
+          <div class="rrow-r" id="gNight">
+            <div class="rb"    onclick="setR('gNight',this,'nightDuty','Y')">YES</div>
+            <div class="rb on" onclick="setR('gNight',this,'nightDuty','N')">NO</div>
+          </div><input type="hidden" id="nightDuty" value="N">
+        </div>
+        <div class="fl"><label>Away from Home Base?</label>
+          <div class="rrow-r" id="gAway">
+            <div class="rb on" onclick="setR('gAway',this,'awayBase','Y')">YES</div>
+            <div class="rb"    onclick="setR('gAway',this,'awayBase','N')">NO</div>
+          </div><input type="hidden" id="awayBase" value="Y">
+        </div>
+        <div class="fl"><label>Time Zone Difference ≥ 4 hrs?</label>
+          <div class="rrow-r" id="gTZ">
+            <div class="rb"    onclick="setR('gTZ',this,'tzBig','Y')">YES</div>
+            <div class="rb on" onclick="setR('gTZ',this,'tzBig','N')">NO</div>
+          </div><input type="hidden" id="tzBig" value="N">
+        </div>
+      </div>
+      <button class="calcbtn" onclick="calculate()">⟳  CALCULATE FTL COMPLIANCE</button>
+    </div>
+    <!-- RIGHT PANEL -->
+    <div class="rp">
+      <div class="g2">
+        <div class="card">
+          <div class="ct">Flight Duty Period (FDP)</div>
+          <div class="rrow"><div class="rl">Scheduled FDP</div><div class="rv" id="r_sFDP">--:--</div></div>
+          <div class="rrow"><div class="rl">Actual FDP</div><div class="rv" id="r_aFDP">--:--</div></div>
+          <div class="rrow"><div class="rl">Max Permitted</div><div class="rv" id="r_maxFDP">--:--</div></div>
+          <div class="rrow"><div class="rl">Headroom</div><div class="rv" id="r_head">--:--</div></div>
+          <div class="rrow"><div class="rl">Table Applied</div><div class="rsm" id="r_tbl">—</div></div>
+          <div class="pbw"><div class="pbt"><div class="pbf" id="fdpBar" style="width:0%;background:#16a34a"></div></div><div class="pbl"><span>0%</span><span style="opacity:.5">80%</span><span>100%</span></div></div>
+          <div style="text-align:right;font-family:var(--mono);font-size:10px;color:#94a3b8;margin-top:2px;" id="fdpPct">—</div>
+        </div>
+        <div class="card">
+          <div class="ct">Times &amp; Delay</div>
+          <div class="rrow"><div class="rl">Sched. Flight Time</div><div class="rv" id="r_sFT">--:--</div></div>
+          <div class="rrow"><div class="rl">Actual Flight Time</div><div class="rv" id="r_aFT">--:--</div></div>
+          <div class="rrow"><div class="rl">Report Time</div><div class="rv" id="r_rep">--:--</div></div>
+          <div class="rrow"><div class="rl">Actual Duty Period</div><div class="rv" id="r_duty">--:--</div></div>
+          <div class="rrow"><div class="rl">Departure Delay</div><div class="rv" id="r_delay">—</div></div>
+          <div class="rrow"><div class="rl">Delay Rule</div><div class="rsm" id="r_dRule">—</div></div>
+        </div>
+      </div>
+      <div id="bigStatus" class="bst" style="background:#f8fafc;border:1px solid #d1dbe8;">
+        <div class="bsl" style="color:#475569">Overall FTL Status</div>
+        <div class="bsv" id="bsVal" style="color:#1e293b">ENTER TIMES</div>
+        <div class="bsd" id="bsDet">Input scheduled and actual block times to calculate compliance</div>
+      </div>
+      <div id="opWarns"></div>
+      <div class="g2">
+        <div class="card">
+          <div class="ct">Minimum Rest Required</div>
+          <div class="rrow"><div class="rl">After This FDP</div><div class="rv" id="r_rest">--:--</div></div>
+          <div class="rrow"><div class="rl">Basis</div><div class="rsm" id="r_restBasis">—</div></div>
+          <div class="rrow"><div class="rl">Sleep Opportunity</div><div class="rv" id="r_sleep">—</div></div>
+          <div class="rrow"><div class="rl">Earliest Next Report</div><div class="rv" id="r_nextRep">--:--</div></div>
+        </div>
+        <div class="card">
+          <div class="ct">Commander's Discretion</div>
+          <div class="al al-i" style="margin-bottom:9px;font-size:10px;">Discretion base is the <strong>basic T73/T74 value</strong>, not T76.</div>
+          <div class="rrow"><div class="rl">Basic Max (Base)</div><div class="rv" id="r_discBase">--:--</div></div>
+          <div class="rrow"><div class="rl">Max Extension</div><div class="rv" id="r_discExt">—</div></div>
+          <div class="rrow"><div class="rl">Absolute Max w/ Disc.</div><div class="rv" id="r_discMax" style="color:#ea580c">--:--</div></div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="card">
+        <div class="ct">Table 7-3 — Max Daily FDP (Acclimatised)</div>
+        <div style="overflow-x:auto;"><table class="ft" id="t73"><thead><tr><th>Report Time</th><th>1–2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead><tbody id="t73b"></tbody></table></div>
+      </div>
+      <div class="sep"></div>
+      <div class="card">
+        <div class="ct">Cumulative Limits — ORO.FTL.210</div>
+        <div class="tip" style="margin-bottom:10px;">Enter prior totals. This flight's computed flight time is added automatically.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <div class="sec-head">Flight Time Limits</div>
+            <div class="ci"><div><label>Prior 28-day (hrs)</label><input type="number" id="c28" value="0" min="0" step=".1" oninput="checkCum()"></div><div class="ci-lim">/ 100</div><div class="ci-pct" id="p28">—</div></div>
+            <div class="ci"><div><label>Calendar year (hrs)</label><input type="number" id="cCY" value="0" min="0" step=".1" oninput="checkCum()"></div><div class="ci-lim">/ 900</div><div class="ci-pct" id="pCY">—</div></div>
+            <div class="ci"><div><label>Rolling 12-month (hrs)</label><input type="number" id="c12" value="0" min="0" step=".1" oninput="checkCum()"></div><div class="ci-lim">/ 1000</div><div class="ci-pct" id="p12">—</div></div>
+          </div>
+          <div>
+            <div class="sec-head">Duty Hour Limits</div>
+            <div class="ci"><div><label>Last 7 days (hrs)</label><input type="number" id="d7" value="0" min="0" step=".1" oninput="checkCum()"></div><div class="ci-lim">/ 60</div><div class="ci-pct" id="p7">—</div></div>
+            <div class="ci"><div><label>Last 14 days (hrs)</label><input type="number" id="d14" value="0" min="0" step=".1" oninput="checkCum()"></div><div class="ci-lim">/ 110</div><div class="ci-pct" id="p14">—</div></div>
+            <div class="ci"><div><label>Last 28 days (hrs)</label><input type="number" id="d28" value="0" min="0" step=".1" oninput="checkCum()"></div><div class="ci-lim">/ 190</div><div class="ci-pct" id="p28d">—</div></div>
+          </div>
+        </div>
+        <div id="cumAlerts" style="margin-top:10px;"></div>
+      </div>
+      <div class="card">
+        <div class="ct">Regulatory Basis</div>
+        <div style="font-size:11px;line-height:1.9;color:#475569;">
+          <div>• <strong>Regulations:</strong> ORO.FTL / CS-FTL.1 under EU 2018/1139 | CAWTR 2004</div>
+          <div>• <strong>Source:</strong> One Air OMA Issue 4/Rev 0 Chapter 7 | EASA CAP 1826 v05</div>
+          <div style="margin-top:8px;padding:8px 10px;background:#fee2e2;border-radius:6px;border:1px solid #fca5a5;color:#991b1b;font-size:10px;">⚠ DECISION SUPPORT TOOL ONLY. Does not replace the OMA or commander's authority.</div>
+        </div>
+      </div>
+      <div class="ftl-footer"><span>ONE AIR FTL CALCULATOR</span> · OMA 4-0 · ORO.FTL / CS-FTL.1</div>
+    </div>
+  </div>
+</div>
+
+<!-- PERFORMANCE VIEW -->
+<div class="view" id="perfView">
+  <div class="perf-container" id="perfContainer">
+    <div class="perf-empty" id="perfEmpty">
+      <div class="perf-empty-icon">⚡</div>
+      <div class="perf-empty-title">No flight plan loaded</div>
+      <div class="perf-empty-sub">Upload a CFP on the NOTAM Brief tab — performance data will appear here automatically.</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ══ OFFLINE SERVICE WORKER (caches CDN libs + map tiles) ══
+if('serviceWorker' in navigator&&'caches' in window){
+  var swCode='self.addEventListener("install",function(e){self.skipWaiting();});'
+    +'self.addEventListener("activate",function(e){e.waitUntil(clients.claim());});'
+    +'self.addEventListener("fetch",function(e){'
+    +'  e.respondWith(caches.open("notam-v1").then(function(cache){'
+    +'    return cache.match(e.request).then(function(r){'
+    +'      if(r)return r;'
+    +'      return fetch(e.request).then(function(resp){'
+    +'        if(resp&&resp.status===200&&resp.type!=="opaque"){cache.put(e.request,resp.clone());}'
+    +'        return resp;'
+    +'      }).catch(function(){return r||new Response("offline",{status:503});});'
+    +'    });'
+    +'  }));'
+    +'});';
+  var swBlob=new Blob([swCode],{type:'application/javascript'});
+  var swUrl=URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl,{scope:'/'}).then(function(){
+    console.log('[OFFLINE] Service worker registered — tiles will be cached');
+  }).catch(function(e){
+    // Service workers from blob URLs don't work in all browsers — fall back to Cache API
+    console.log('[OFFLINE] SW registration failed (expected in sandboxed environments), using Cache API fallback');
+  });
+}
+
+// Pre-cache map tiles for a given bounds at given zoom levels
+function preCacheTiles(bounds,zoomLevels){
+  if(!('caches' in window))return;
+  caches.open('notam-v1').then(function(cache){
+    var tileUrls=[];
+    var subs=['a','b','c','d'];
+    zoomLevels.forEach(function(z){
+      var nw=bounds.getNorthWest(),se=bounds.getSouthEast();
+      var x1=lon2tile(nw.lng,z),x2=lon2tile(se.lng,z);
+      var y1=lat2tile(nw.lat,z),y2=lat2tile(se.lat,z);
+      if(x1>x2){var t=x1;x1=x2;x2=t;}
+      if(y1>y2){var t=y1;y1=y2;y2=t;}
+      // Cap at 200 tiles per zoom to avoid flooding
+      var count=0;
+      for(var x=x1;x<=x2&&count<200;x++){
+        for(var y=y1;y<=y2&&count<200;y++){
+          var s=subs[(x+y)%4];
+          tileUrls.push('https://'+s+'.basemaps.cartocdn.com/rastertiles/voyager/'+z+'/'+x+'/'+y+'.png');
+          count++;
+        }
+      }
+    });
+    console.log('[OFFLINE] Pre-caching '+tileUrls.length+' map tiles...');
+    var cached=0;
+    tileUrls.forEach(function(url){
+      cache.match(url).then(function(existing){
+        if(!existing){
+          fetch(url,{mode:'cors'}).then(function(resp){
+            if(resp&&resp.ok){cache.put(url,resp);cached++;if(cached%50===0)console.log('[OFFLINE] Cached '+cached+' tiles...');}
+          }).catch(function(){});
+        }
+      });
+    });
+    setTimeout(function(){
+      var badge=document.getElementById('offlineBadge');
+      if(badge){badge.style.display='inline';badge.textContent='✓ CACHED';}
+      console.log('[OFFLINE] Tile caching complete');
+    },5000);
+  }).catch(function(){});
+}
+function lon2tile(lon,z){return Math.floor((lon+180)/360*Math.pow(2,z));}
+function lat2tile(lat,z){return Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,z));}
+
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ══ STATE ══
+let flightData=null, leafletMap=null, markers=[];
+let activeTab='ALL', activeSev='all', rawTextForAge=null;
+let selectedDepRwy=null, selectedArrRwy=null;
+let filedFL=null, currentFL=null;
+const FL_STEP=10, FL_RANGE=60;
+
+// ══ CLOCK ══
+setInterval(()=>{const n=new Date(),z=v=>String(v).padStart(2,'0');document.getElementById('clock').textContent=`${z(n.getUTCHours())}:${z(n.getUTCMinutes())}:${z(n.getUTCSeconds())}Z`;},1000);
+
+// ══ VIEWS ══
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const r=id==='resultsView';
+  document.getElementById('btnNew').classList.toggle('visible',r);
+  document.getElementById('btnSave').classList.toggle('visible',r);
+  if(['uploadView','procView','errView','resultsView'].includes(id)) sessionStorage.setItem('lastNotamView',id);
+}
+function resetApp(){
+  fileOFP=null;fileNOTAM=null;fileWIND=null;fileCOMBI=null;windText=null;flightData=null;
+  if(leafletMap){leafletMap.remove();leafletMap=null;}markers=[];
+  ['OFP','NOTAM','WIND','COMBI'].forEach(n=>{
+    var fi=document.getElementById('fi'+n);if(fi)fi.value='';
+    var fn=document.getElementById('fn'+n);if(fn)fn.textContent='';
+    var dz=document.getElementById('dz'+n);if(dz)dz.classList.remove('ready');
+  });
+  var stats=document.getElementById('uploadStats');if(stats)stats.style.display='none';
+  updateAnalyseBtn();
+  showView('uploadView');
+}
+function showError(msg){document.getElementById('errMsg').textContent=msg;showView('errView');}
+
+// ══ PAGE NAV ══
+let currentPage='notam';
+function switchPage(page){
+  currentPage=page;
+  document.getElementById('snNotam').classList.toggle('active',page==='notam');
+  document.getElementById('snDuty').classList.toggle('active',page==='duty');
+  document.getElementById('snPerf').classList.toggle('active',page==='perf');
+  document.getElementById('snFuel').classList.toggle('active',page==='fuel');
+  const NOTAM_VIEWS=['uploadView','procView','errView','resultsView'];
+  var extraViews=['dutyView','perfView','fuelView'];
+  if(page==='duty'){
+    NOTAM_VIEWS.forEach(v=>document.getElementById(v).classList.remove('active'));
+    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
+    document.getElementById('dutyView').classList.add('active');
+    if(flightData)autoPopulateDuty(flightData);
+  } else if(page==='perf'){
+    NOTAM_VIEWS.forEach(v=>document.getElementById(v).classList.remove('active'));
+    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
+    document.getElementById('perfView').classList.add('active');
+    if(perfData) renderPerf();
+  } else if(page==='fuel'){
+    NOTAM_VIEWS.forEach(v=>document.getElementById(v).classList.remove('active'));
+    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
+    document.getElementById('fuelView').classList.add('active');
+  } else {
+    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
+    const last=sessionStorage.getItem('lastNotamView')||'uploadView';
+    document.getElementById(last).classList.add('active');
+  }
+}
+
+// ══ DUAL UPLOAD ZONES ══
+let fileOFP=null, fileNOTAM=null, fileWIND=null, fileCOMBI=null;
+var windText=null; // stored wind chart text for FL/Fuel analysis
+function setupZone(name){
+  const dz=document.getElementById('dz'+name), fi=document.getElementById('fi'+name);
+  if(!dz||!fi)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f&&f.name.toLowerCase().endsWith('.pdf'))setFileN(f,name);else alert('Please drop a PDF file.');});
+  fi.addEventListener('change',e=>{if(e.target.files[0])setFileN(e.target.files[0],name);});
+}
+setupZone('OFP'); setupZone('NOTAM'); setupZone('WIND'); setupZone('COMBI');
+
+function setFileN(file,name){
+  if(name==='COMBI'){
+    fileCOMBI=file;
+    fileOFP=null;fileNOTAM=null;fileWIND=null;
+    ['OFP','NOTAM','WIND'].forEach(function(n){
+      var fn=document.getElementById('fn'+n);if(fn)fn.textContent='';
+      var dz=document.getElementById('dz'+n);if(dz)dz.classList.remove('ready');
+      var fi=document.getElementById('fi'+n);if(fi)fi.value='';
+    });
+  } else {
+    if(name==='OFP')fileOFP=file; else if(name==='NOTAM')fileNOTAM=file; else if(name==='WIND')fileWIND=file;
+    fileCOMBI=null;
+    var fnC=document.getElementById('fnCOMBI');if(fnC)fnC.textContent='';
+    var dzC=document.getElementById('dzCOMBI');if(dzC)dzC.classList.remove('ready');
+    var fiC=document.getElementById('fiCOMBI');if(fiC)fiC.value='';
+  }
+  const dz=document.getElementById('dz'+name);
+  dz.classList.add('ready');
+  document.getElementById('fn'+name).textContent='✓  '+file.name;
+  updateAnalyseBtn();
+}
+function clearFileN(e,name){
+  e.stopPropagation();
+  if(name==='OFP'){fileOFP=null;document.getElementById('fiOFP').value='';}
+  else if(name==='NOTAM'){fileNOTAM=null;document.getElementById('fiNOTAM').value='';}
+  else if(name==='WIND'){fileWIND=null;windText=null;document.getElementById('fiWIND').value='';}
+  else if(name==='COMBI'){fileCOMBI=null;document.getElementById('fiCOMBI').value='';}
+  document.getElementById('fn'+name).textContent='';
+  document.getElementById('dz'+name).classList.remove('ready');
+  updateAnalyseBtn();
+}
+function updateAnalyseBtn(){
+  const btn=document.getElementById('btnAnalyse');
+  const ready=fileCOMBI||(fileOFP&&fileNOTAM);
+  btn.disabled=!ready;
+  if(fileCOMBI) btn.textContent='▶  Analyse Combined Briefing Pack';
+  else if(fileOFP&&fileNOTAM) btn.textContent='▶  Analyse Flight'+(fileWIND?' + Wind':'');
+  else btn.textContent='Upload a combined document, or OFP + NOTAM files';
+}
+
+// ══ PROGRESS ══
+const STEPS=[[5,'Reading PDF pages'],[12,'Extracting flight route from nav log'],[25,'Locating adequate aerodromes'],[50,'Sending to AI for NOTAM extraction']];
+let _si=0,_st=null,_apiTimer=null,_apiStart=0;
+function startProg(){_si=0;setP(0,'Starting...');_st=setInterval(()=>{if(_si>=STEPS.length){clearInterval(_st);return;}const[p,l]=STEPS[_si++];setP(p,l+'...');},2500);}
+function setP(p,l){document.getElementById('progFill').style.width=p+'%';document.getElementById('progLabel').textContent=l;}
+function stopProg(){clearInterval(_st);clearInterval(_apiTimer);setP(100,'Complete');document.getElementById('progFill').classList.remove('pulsing');}
+// Pulsing "waiting for AI" indicator — called when the fetch starts
+function startApiWait(){
+  _apiStart=Date.now();
+  clearInterval(_st); // stop the step timer
+  setP(55,'Waiting for AI response...');
+  document.getElementById('progFill').classList.add('pulsing');
+  let dots=0;
+  _apiTimer=setInterval(()=>{
+    const elapsed=Math.round((Date.now()-_apiStart)/1000);
+    dots=(dots+1)%4;
+    const d='.'.repeat(dots);
+    const pct=Math.min(55+Math.floor(elapsed*0.4),95); // slowly creep to 95%
+    setP(pct,`AI analysing NOTAMs${d} (${elapsed}s)`);
+  },800);
+}
+
+// ══ PDF EXTRACTION ══
+async function extractText(file){
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let txt='';
+  for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();txt+=c.items.map(it=>it.str).join(' ')+'\n';}
+  return txt;
+}
+
+// ══ ROUTE EXTRACTOR (client-side) ══
+function extractRouteFromText(text){
+  const lines=text.split('\n'), coordRe=/([NS])(\d+):(\d+\.\d+)\s+([EW])(\d+):(\d+\.\d+)/;
+  const allWpts=[];
+  for(let i=0;i<lines.length;i++){
+    const m=lines[i].match(coordRe);if(!m)continue;
+    let lat=parseFloat(m[2])+parseFloat(m[3])/60;if(m[1]==='S')lat=-lat;
+    let lon=parseFloat(m[5])+parseFloat(m[6])/60;if(m[4]==='W')lon=-lon;
+    let name='';
+    for(let j=i-1;j>=Math.max(0,i-5);j--){const prev=lines[j].trim();if(!prev||coordRe.test(prev))continue;const tok=prev.split(/\s+/)[0];if(tok&&tok.length>=3&&tok.length<=6&&/^[A-Z0-9]+$/.test(tok)){name=tok;break;}}
+    if(!name)continue;
+    if(!(/^[A-Z]{2,5}$/.test(name)||/^[A-Z]{3,5}\d$/.test(name)||/^[A-Z]{4}$/.test(name)))continue;
+    allWpts.push({id:name,lat:parseFloat(lat.toFixed(4)),lon:parseFloat(lon.toFixed(4)),type:'waypoint'});
+  }
+  const seen=new Set(), route=[];
+  for(const w of allWpts){if(seen.has(w.id)){if(/^[A-Z]{4}$/.test(w.id))break;continue;}seen.add(w.id);route.push(w);}
+  return route.map(w=>({...w,name:w.id}));
+}
+
+// ══ ADEQUATE AIRPORTS (client-side) ══
+async function extractAdequateAirports(docText){
+  const found=new Map();
+
+  // Pattern 1: "Adequate airport(s): ZHHH ZHCC ZSHC ZSJN ZSPD..."
+  for(const m of docText.matchAll(/[Aa]dequate\s+airport(?:\(s\)|s)?\s*:\s*([A-Z]{4}(?:[\s,]+[A-Z]{4})*)/g))
+    m[1].trim().split(/[\s,]+/).filter(c=>c.length===4&&/^[A-Z]{4}$/.test(c)).forEach(icao=>{if(!found.has(icao))found.set(icao,{icao,name:'',lat:0,lon:0,type:'enroute_alternate'});});
+
+  // Pattern 2: "Adequate airport EGBB - BHX - BIRMINGHAM"
+  for(const m of docText.matchAll(/[Aa]dequate\s+airport\s+([A-Z]{4})\s*[-–]/g))
+    if(!found.has(m[1]))found.set(m[1],{icao:m[1],name:'',lat:0,lon:0,type:'enroute_alternate'});
+
+  // Pattern 3: "ALT 1 :ZHHH" or "T/O ALT:XXXX"
+  for(const m of docText.matchAll(/(?:ALT\s*[12]|T\/O\s+ALT)\s*[:/]\s*([A-Z]{4})/g))
+    if(!found.has(m[1]))found.set(m[1],{icao:m[1],name:'',lat:0,lon:0,type:'dest_alternate'});
+
+  // Pattern 4: "Alternate airport(s): ZHHH ZLDH..." or "Alternate airport ZHHH -"
+  for(const m of docText.matchAll(/[Aa]lternate\s+airport(?:\(s\)|s)?\s*:\s*([A-Z]{4}(?:[\s,]+[A-Z]{4})*)/g))
+    m[1].trim().split(/[\s,]+/).filter(c=>c.length===4&&/^[A-Z]{4}$/.test(c)).forEach(icao=>{if(!found.has(icao))found.set(icao,{icao,name:'',lat:0,lon:0,type:'dest_alternate'});});
+  for(const m of docText.matchAll(/[Aa]lternate\s+airport\s+([A-Z]{4})\s*[-–]/g))
+    if(!found.has(m[1]))found.set(m[1],{icao:m[1],name:'',lat:0,lon:0,type:'dest_alternate'});
+
+  // Pattern 5: "RALT/ZLDH" in ATC route
+  for(const m of docText.matchAll(/RALT\/([A-Z]{4})/g))
+    if(!found.has(m[1]))found.set(m[1],{icao:m[1],name:'',lat:0,lon:0,type:'enroute_alternate'});
+
+  // Pattern 6: "Destination alt XXXX" or "dest alternate XXXX"
+  for(const m of docText.matchAll(/[Dd]estination\s+alt(?:ernate)?\s+(?:airport\s+)?([A-Z]{4})/g))
+    if(!found.has(m[1]))found.set(m[1],{icao:m[1],name:'',lat:0,lon:0,type:'dest_alternate'});
+
+  // Geocode all found airports from ICAO_COORDS
+  found.forEach((a)=>{if(ICAO_COORDS[a.icao]){a.lat=ICAO_COORDS[a.icao][0];a.lon=ICAO_COORDS[a.icao][1];}});
+
+  console.log('[ADEQUATE] Found '+found.size+' airports: '+[...found.keys()].join(', '));
+  return[...found.values()];
+}
+
+// ══ SAFETY KEYWORDS ══
+const SAFETY_KEYWORDS=['ACTIVATED','ACTIVE','ASHTAM','CLOSED','CLSD','CRANE','DANGER','DANGEROUS','DEACTIVATED','DME','DRONE','FUEL','GPS RAIM','ILS','INOP','JET A1','LNAV','MANDATORY','NOT AVAILABLE','NOT AVBL','OBST','OBSTACLE','OUT OF SERVICE','RESTRICTED AREA','RUNWAY','SNOWTAM','SUSPENDED','TWY','U/S','UNMANNED ACFT','UNSERVICEABLE','VNAV','VOR','WIP','LOC'];
+
+// ══ CLIENT-SIDE NOTAM PRE-PARSER ══
+// ══ CLIENT-SIDE NOTAM PARSER + CLASSIFIER ══
+// Fully parses, keyword-filters, and severity-classifies NOTAMs locally.
+// No AI call needed for NOTAMs — only the OFP goes to the API.
+function parseAndClassifyNotams(notamText){
+  // ── DIAGNOSTIC: Log sample text to see what format we're dealing with ──
+  console.log('[NOTAM] Raw text sample (first 500 chars):', notamText.slice(0,500));
+  console.log('[NOTAM] Raw text sample (chars 30000-30500):', notamText.slice(30000,30500));
+
+  // ── STEP 0: Normalize PDF text ──
+  let normalized=notamText;
+  // Insert newlines before Lido-style NOTAM delimiters: |#N|----
+  normalized=normalized.replace(/(\|#\d+\|[-]+)/g,'\n$1');
+  // Insert newlines before bare NOTAM IDs: A1234/26 NOTAMN (letter(s) + digits + / + 2digits + space + NOTAM)
+  normalized=normalized.replace(/\s([A-Z]\d{3,5}\/\d{2}\s+NOTAM[NRC])/g,'\n$1');
+  // Insert newlines before Q/A/B/C/E lines
+  normalized=normalized.replace(/\s(Q\)\s*[A-Z])/g,'\n$1');
+  normalized=normalized.replace(/\s(A\)\s*[A-Z]{4})/g,'\n$1');
+  normalized=normalized.replace(/\s(B\)\s*\d)/g,'\n$1');
+  normalized=normalized.replace(/\s(C\)\s*\S)/g,'\n$1');
+  normalized=normalized.replace(/\s(E\)\s)/g,'\n$1');
+  normalized=normalized.replace(/\s(F\)\s)/g,'\n$1');
+  normalized=normalized.replace(/\s(G\)\s)/g,'\n$1');
+  // Insert newlines before section headers (various formats)
+  normalized=normalized.replace(/(Departure airport\s)/gi,'\n$1');
+  normalized=normalized.replace(/(Destination airport\s)/gi,'\n$1');
+  normalized=normalized.replace(/(Alternate airport\s)/gi,'\n$1');
+  normalized=normalized.replace(/(Adequate airport\s)/gi,'\n$1');
+  normalized=normalized.replace(/(FIR\s+\w{4}\s*[\[\(])/g,'\n$1');
+  normalized=normalized.replace(/(ENROUTE|EN-ROUTE|EN ROUTE)/gi,'\n$1');
+  // Lido category brackets
+  normalized=normalized.replace(/\s(\[[^\]]{2,30}\|)/g,'\n$1');
+  normalized=normalized.replace(/(NOTAMs? Page)/gi,'\n$1');
+
+  const lines=normalized.split('\n').map(l=>l.trim()).filter(l=>l);
+  console.log(`[NOTAM] Normalized: ${lines.length} lines`);
+  // Log some lines to see patterns
+  const sampleLines=lines.filter(l=>l.match(/NOTAM|Q\)|A\)\s*[A-Z]{4}|E\)\s/i)).slice(0,10);
+  console.log('[NOTAM] Sample NOTAM-like lines:', sampleLines.map(l=>l.slice(0,120)));
+
+  // ── DETECT FORMAT ──
+  // Count matches for each format to pick the right parser
+  const lidoCount=(normalized.match(/\|#\d+\|[-]+[A-Z]\d{3,5}\/\d{2}\s+NOTAM/g)||[]).length;
+  const bareCount=(normalized.match(/^[A-Z]\d{3,5}\/\d{2}\s+NOTAM[NRC]/gm)||[]).length;
+  const qLineCount=(normalized.match(/Q\)\s*[A-Z]{4}/g)||[]).length;
+  console.log(`[NOTAM] Format detection: Lido=${lidoCount}, Bare=${bareCount}, Q-lines=${qLineCount}`);
+
+  const allNotams=[];
+  let currentSection='', currentAirport='';
+
+  // ── NOTAM ID REGEX — matches both formats ──
+  // Format 1: |#N|----C2027/26 NOTAMN
+  // Format 2: C2027/26 NOTAMN  (bare, at start of line after normalization)
+  // Format 3: C2027/26 NOTAMR C1000/26 (with replacement)
+  const NOTAM_ID_RE=/(?:\|#\d+\|[-]+)?([A-Z]\d{3,5}\/\d{2})\s+(NOTAM[NRC])(?:\s+[A-Z]\d{3,5}\/\d{2})?/;
+
+  for(let i=0;i<lines.length;i++){
+    const L=lines[i];
+
+    // Detect section headers — multiple formats
+    if(/Departure\s+(?:airport|aerodrome)\s+(\w{4})/i.test(L)){currentSection='DEPARTURE';currentAirport=L.match(/(?:airport|aerodrome)\s+(\w{4})/i)[1];}
+    else if(/Destination\s+(?:airport|aerodrome)\s+(\w{4})/i.test(L)){currentSection='DESTINATION';currentAirport=L.match(/(?:airport|aerodrome)\s+(\w{4})/i)[1];}
+    else if(/(?:Alternate|Adequate|ALTN)\s+(?:airport|aerodrome)?\s*(\w{4})/i.test(L)){currentSection='ALTERNATE';const m=L.match(/(?:airport|aerodrome)?\s*([A-Z]{4})/);if(m)currentAirport=m[1];}
+    else if(/(?:FIR|ENROUTE|EN.ROUTE)\s+(\w{4})/i.test(L)){currentSection='ENROUTE';const m=L.match(/(\w{4})/);if(m)currentAirport=m[1];}
+
+    // Detect NOTAM start
+    const nm=L.match(NOTAM_ID_RE);
+    if(!nm) continue;
+
+    const id=nm[1];
+    let category='', age='';
+    // Lido format: [category | age] on same or next line
+    const catM=L.match(/\[([^|\]]*)\|?\s*(.*?)\]/);
+    if(catM){category=catM[1].trim();age=catM[2].trim();}
+    else if(i+1<lines.length){
+      const cm=lines[i+1].match(/\[([^|\]]*)\|?\s*(.*?)\]/);
+      if(cm){category=cm[1].trim();age=cm[2].trim();}
+    }
+
+    // Parse Q, A, B, C, E, F, G lines — search forward
+    let qLine='', aLine='', bTime='', cTime='', eLine='';
+    let altitude='', lat=0, lon=0, floorFt=null, ceilFt=null;
+    let affectedRunways=[], affectedFIR=null;
+
+    for(let j=i;j<Math.min(i+30,lines.length);j++){
+      if(j>i&&lines[j].match(NOTAM_ID_RE)) break; // next NOTAM
+      const l=lines[j];
+
+      if(l.match(/Q\)\s*[A-Z]/)){
+        qLine=l;
+        const qContent=l.replace(/.*Q\)\s*/,'');
+        const parts=qContent.split('/');
+        if(parts.length>=1) affectedFIR=parts[0].trim();
+        if(parts.length>=8) altitude=parts[6]+'-'+parts[7].split('/')[0];
+        const coordM=l.match(/(\d{4})([NS])(\d{5})([EW])/);
+        if(coordM){
+          lat=parseInt(coordM[1].slice(0,2))+parseInt(coordM[1].slice(2,4))/60;
+          if(coordM[2]==='S')lat=-lat;
+          lon=parseInt(coordM[3].slice(0,3))+parseInt(coordM[3].slice(3,5))/60;
+          if(coordM[4]==='W')lon=-lon;
+        }
+      }
+      if(l.match(/A\)\s*[A-Z]{4}/)){
+        const aM=l.match(/A\)\s*([A-Z]{4})/); if(aM) aLine=aM[1];
+      }
+      if(l.match(/B\)\s*\d/)){
+        const bM=l.match(/B\)\s*(\d{10})/); if(bM) bTime=bM[1];
+      }
+      if(l.match(/C\)\s*\S/)){
+        const cM=l.match(/C\)\s*(\S+)/); if(cM) cTime=cM[1];
+      }
+      if(l.match(/E\)\s/)){
+        eLine=l.replace(/.*?E\)\s*/,'').trim();
+        // Accumulate continuation lines
+        for(let k=j+1;k<Math.min(j+15,lines.length);k++){
+          if(lines[k].match(NOTAM_ID_RE)||lines[k].match(/[ABCFG]\)\s/)||lines[k].match(/(Departure|Destination|Alternate|Adequate|FIR|ENROUTE)/i)||lines[k].match(/NOTAM.? Page/i)) break;
+          if(lines[k].trim()) eLine+=' '+lines[k].trim();
+        }
+      }
+      if(l.match(/F\)\s/)){
+        const fM=l.match(/F\)\s*(\S+)/);
+        if(fM){const v=parseInt(fM[1]);if(!isNaN(v))floorFt=v<1000?v*100:v;}
+      }
+      if(l.match(/G\)\s/)){
+        const gM=l.match(/G\)\s*(\S+)/);
+        if(gM){const v=parseInt(gM[1]);if(!isNaN(v))ceilFt=v<1000?v*100:v;}
+      }
+    }
+
+    // Extract affected runways
+    const rwyM=eLine.match(/RWY\s*(\d{2}[LRC]?(?:\s*\/\s*\d{2}[LRC]?)*)/gi);
+    if(rwyM) rwyM.forEach(m=>{m.replace(/RWY\s*/i,'').split(/\s*\/\s*/).forEach(r=>{if(r.trim())affectedRunways.push(r.trim());});});
+
+    function fmtNotamTime(t){
+      if(!t||t.length<10)return null;
+      return`20${t.slice(0,2)}-${t.slice(2,4)}-${t.slice(4,6)}T${t.slice(6,8)}:${t.slice(8,10)}:00Z`;
+    }
+
+    allNotams.push({
+      id, category, age, qLine,
+      airport: aLine||currentAirport,
+      phase: currentSection||'OTHER',
+      fullText: eLine.slice(0,200),
+      subject: '',
+      validFrom: fmtNotamTime(bTime),
+      validTo: (cTime==='PERM'||cTime==='UFN')?null:fmtNotamTime(cTime),
+      matchedKeywords: [],
+      affectedRunways,
+      affectedFIR,
+      lat, lon, altitude,
+      altFloorFt: floorFt,
+      altCeilFt: ceilFt,
+      severity: 'ADVISORY',
+    });
+  }
+  console.log(`[NOTAM] Parser found ${allNotams.length} total NOTAMs`);
+  if(allNotams.length>0) console.log('[NOTAM] First NOTAM:', JSON.stringify(allNotams[0]).slice(0,300));
+  if(allNotams.length===0){
+    // Extra diagnostics
+    console.warn('[NOTAM] Zero NOTAMs parsed! Checking for NOTAM patterns in raw text...');
+    const rawNotamIds=(notamText.match(/[A-Z]\d{3,5}\/\d{2}\s*NOTAM/g)||[]);
+    console.log(`[NOTAM] Raw NOTAM ID occurrences in original text: ${rawNotamIds.length}`);
+    if(rawNotamIds.length>0) console.log('[NOTAM] Samples:', rawNotamIds.slice(0,5));
+    // Also check for Q-lines
+    const rawQ=(notamText.match(/Q\)\s*[A-Z]{4}/g)||[]);
+    console.log(`[NOTAM] Q-line occurrences: ${rawQ.length}`);
+  }
+
+  // ── KEYWORD MATCHING ──
+  const kwSet=SAFETY_KEYWORDS.map(k=>k.toUpperCase());
+  const matched=allNotams.filter(n=>{
+    const txt=(n.fullText+' '+n.id+' '+n.category).toUpperCase();
+    const hits=[];
+    kwSet.forEach(kw=>{
+      if(kw==='LOC'){
+        if(/\bLOC\b/.test(txt)&&/ILS|LOCALISER|LOC\s+RWY|LOC\s+BEAM|LOC\s+U\/S|LOC\s+INOP/.test(txt)) hits.push('LOC');
+      } else if(txt.includes(kw)){
+        hits.push(kw);
+      }
+    });
+    if(hits.length>0){n.matchedKeywords=hits;return true;}
+    return false;
+  });
+
+  // ── SEVERITY CLASSIFICATION ──
+  matched.forEach(n=>{
+    const txt=(n.fullText+' '+n.category).toUpperCase();
+    const isPrimary=n.phase==='DEPARTURE'||n.phase==='DESTINATION';
+
+    if(isPrimary&&/(RWY|RUNWAY).*?(CL[SO]D|CLOSED)/.test(txt)){n.severity='CRITICAL';}
+    else if(/ILS.*(U\/S|INOP|UNSERVICEABLE)/.test(txt)){n.severity='CRITICAL';}
+    else if(/VOR.*(U\/S|INOP|UNSERVICEABLE)/.test(txt)){n.severity='CRITICAL';}
+    else if(/DME.*(U\/S|INOP|UNSERVICEABLE)/.test(txt)){n.severity='CRITICAL';}
+    else if(/\bASHTAM\b/.test(txt)||/\bSNOWTAM\b/.test(txt)){n.severity='CRITICAL';}
+    else if(/DANGER.*ACTIVAT/.test(txt)){n.severity='CRITICAL';}
+    else if(isPrimary&&/AIRPORT.*CL[SO]D|AD.*CL[SO]D/.test(txt)){n.severity='CRITICAL';}
+    else if(/TWY.*CL[SO]D|TAXIWAY.*CL[SO]D/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(/\bCRANE\b/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(/\bDRONE\b|\bUNMANNED ACFT\b/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(/\bWIP\b|\bWORK IN PROGRESS\b/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(/\bOBST\b|\bOBSTACLE\b/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(/GPS RAIM/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(/FUEL.*(NOT|U\/S|UNAVAIL)|JET A1.*(NOT|U\/S)/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(/RESTRICTED AREA.*ACTIVAT/.test(txt)){n.severity='SIGNIFICANT';}
+    else if(isPrimary&&/(CLSD|CLOSED|INOP|U\/S|UNSERVICEABLE|NOT AVBL|NOT AVAILABLE|SUSPENDED)/.test(txt)){n.severity='SIGNIFICANT';}
+
+    n.subject=n.fullText.slice(0,80).replace(/\s+/g,' ').trim();
+  });
+
+  console.log(`[NOTAM] Classified: ${matched.filter(n=>n.severity==='CRITICAL').length} CRITICAL, ${matched.filter(n=>n.severity==='SIGNIFICANT').length} SIGNIFICANT, ${matched.filter(n=>n.severity==='ADVISORY').length} ADVISORY`);
+  return matched;
+}
+// ══ DOCUMENT SPLITTER — auto-detects OFP / NOTAM / Wind sections ══
+function splitDocument(fullText){
+  // Section markers (from Lido/Jeppesen briefing packs):
+  // OFP ends and NOTAMs begin at: "Departure airport:" or "NOTAMs for flight" or "NOTAM BRIEFING"
+  // Wind section begins at: "VERTICAL CROSS SECTION" or "WIND, TEMPERATURE"
+  var ofpText='', notamText='', windSectionText='';
+
+  // Find NOTAM section start
+  var notamStart=-1;
+  var notamMarkers=[
+    /Departure airport[:\s]+[A-Z]{4}/i,
+    /NOTAMs for (?:flight|FPL)/i,
+    /NOTAM BRIEFING/i,
+    /^NOTAMs? Page/im
+  ];
+  for(var i=0;i<notamMarkers.length;i++){
+    var m=fullText.search(notamMarkers[i]);
+    if(m>0&&(notamStart<0||m<notamStart)) notamStart=m;
+  }
+
+  // Find Wind section start
+  var windStart=fullText.search(/VERTICAL CROSS SECTION/i);
+  if(windStart<0) windStart=fullText.search(/WIND,\s*TEMPERATURE/i);
+
+  // Split
+  if(notamStart>0&&windStart>0){
+    // All three sections present
+    if(windStart>notamStart){
+      // OFP → NOTAMs → Wind (typical order)
+      ofpText=fullText.substring(0,notamStart);
+      notamText=fullText.substring(notamStart,windStart);
+      windSectionText=fullText.substring(windStart);
+    } else {
+      // OFP → Wind → NOTAMs (unusual but handle it)
+      ofpText=fullText.substring(0,windStart);
+      windSectionText=fullText.substring(windStart,notamStart);
+      notamText=fullText.substring(notamStart);
+    }
+  } else if(notamStart>0){
+    ofpText=fullText.substring(0,notamStart);
+    notamText=fullText.substring(notamStart);
+  } else {
+    // Can't find NOTAM section — treat entire doc as OFP
+    ofpText=fullText;
+  }
+
+  console.log('[SPLIT] Document split:');
+  console.log('  OFP: '+ofpText.length+' chars');
+  console.log('  NOTAMs: '+notamText.length+' chars');
+  console.log('  Wind: '+windSectionText.length+' chars');
+  if(notamStart>0) console.log('  NOTAM section starts at char '+notamStart);
+  if(windStart>0) console.log('  Wind section starts at char '+windStart);
+
+  return {ofpText:ofpText, notamText:notamText, windText:windSectionText};
+}
+
+async function startAnalysis(){
+  if(!fileCOMBI&&(!fileOFP||!fileNOTAM))return;
+  showView('procView');
+  var fileLabel=fileCOMBI?esc(fileCOMBI.name):'<span class="proc-doc">✈️ '+esc(fileOFP.name)+'</span><span class="proc-doc">📋 '+esc(fileNOTAM.name)+'</span>';
+  document.getElementById('procDocs').innerHTML=fileCOMBI?'<span class="proc-doc">📦 '+fileLabel+'</span>':fileLabel;
+  startProg();
+  try{
+    var ofpText, notamText;
+
+    if(fileCOMBI){
+      // ── COMBINED DOCUMENT — extract and auto-split ──
+      console.log('[NOTAM] Step 1: Extracting combined document...');
+      setP(5,'Reading combined briefing pack...');
+      const fullText=await extractText(fileCOMBI);
+      console.log(`[NOTAM] Combined doc: ${fullText.length} chars`);
+
+      setP(15,'Auto-detecting sections...');
+      const sections=splitDocument(fullText);
+      ofpText=sections.ofpText;
+      notamText=sections.notamText;
+      if(sections.windText.length>100){
+        windText=sections.windText;
+        console.log('[NOTAM] Wind section detected: '+windText.length+' chars');
+        var fb=document.getElementById('fuelBadge');if(fb){fb.textContent='LOADED';fb.classList.add('populated');}
+      }
+      if(!notamText||notamText.length<50){
+        throw new Error('Could not detect NOTAM section in the combined document. Try uploading OFP and NOTAMs as separate files.');
+      }
+    } else {
+      // ── SEPARATE FILES ──
+      console.log('[NOTAM] Step 1: Extracting OFP...');
+      setP(5,'Reading flight plan...');
+      ofpText=await extractText(fileOFP);
+      console.log(`[NOTAM] OFP: ${ofpText.length} chars`);
+
+      console.log('[NOTAM] Step 2: Extracting NOTAM pack...');
+      setP(15,'Reading NOTAM pack...');
+      notamText=await extractText(fileNOTAM);
+      console.log(`[NOTAM] NOTAMs: ${notamText.length} chars`);
+
+      if(fileWIND){
+        console.log('[NOTAM] Extracting wind chart...');
+        windText=await extractText(fileWIND);
+        console.log('[NOTAM] Wind chart: '+windText.length+' chars');
+        var fb=document.getElementById('fuelBadge');if(fb){fb.textContent='LOADED';fb.classList.add('populated');}
+      }
+    }
+
+    setP(25,'Extracting route and airports...');
+    const extractedRoute=extractRouteFromText(ofpText);
+    const adequateAirports=await extractAdequateAirports(notamText+'\n'+ofpText);
+    console.log(`[NOTAM] Route: ${extractedRoute.length} wpts, Alternates: ${adequateAirports.map(a=>a.icao).join(',')}`);
+
+    // ── STEP 4: Client-side NOTAM parsing + classification (NO AI!) ──
+    setP(35,'Parsing and classifying NOTAMs locally...');
+    const classifiedNotams=parseAndClassifyNotams(notamText);
+
+    const statsEl=document.getElementById('uploadStats');
+    if(statsEl){
+      statsEl.style.display='block';
+      const crit=classifiedNotams.filter(n=>n.severity==='CRITICAL').length;
+      const sig=classifiedNotams.filter(n=>n.severity==='SIGNIFICANT').length;
+      const adv=classifiedNotams.filter(n=>n.severity==='ADVISORY').length;
+      statsEl.innerHTML=`<div class="upload-status info">📊 <strong>${classifiedNotams.length}</strong> safety NOTAMs: <span style="color:#c0392b">${crit} Critical</span> · <span style="color:#c47a00">${sig} Significant</span> · <span style="color:#1a5fa0">${adv} Advisory</span></div>`;
+    }
+
+    // ── STEP 5: Client-side OFP parsing (NO API CALL!) ──
+    setP(50,'Parsing flight plan data...');
+    console.log('[NOTAM] Step 5: Extracting flight data from OFP (client-side)...');
+    parseNavLog(ofpText); // Extract MORA + TOC burn-off
+    const decoded=parseOFP(ofpText, adequateAirports);
+
+    // ── STEP 6: Merge client-side NOTAMs ──
+    setP(70,'Merging NOTAMs...');
+    decoded.notams=classifiedNotams;
+    const opsNotams=classifiedNotams.filter(n=>['DEPARTURE','DESTINATION','ENROUTE'].includes(n.phase));
+    const hasCritical=opsNotams.some(n=>n.severity==='CRITICAL');
+    const hasSignificant=opsNotams.some(n=>n.severity==='SIGNIFICANT');
+    decoded.overallStatus=hasCritical?'CAUTION':hasSignificant?'CAUTION':'GO';
+    decoded.statusReason=hasCritical?`${opsNotams.filter(n=>n.severity==='CRITICAL').length} critical NOTAM(s) affecting departure, en-route, or destination`
+      :hasSignificant?`${opsNotams.filter(n=>n.severity==='SIGNIFICANT').length} significant NOTAM(s) — review required`
+      :'No critical issues for departure, en-route, or destination';
+    console.log(`[NOTAM] Merged: ${decoded.notams.length} NOTAMs, status=${decoded.overallStatus}`);
+
+    if(extractedRoute.length>=2){
+      decoded.route=extractedRoute;
+      const first=extractedRoute[0],last=extractedRoute[extractedRoute.length-1];
+      if(decoded.departure&&first.id===decoded.departure.icao){decoded.departure.lat=first.lat;decoded.departure.lon=first.lon;}
+      if(decoded.destination&&last.id===decoded.destination.icao){decoded.destination.lat=last.lat;decoded.destination.lon=last.lon;}
+    }
+    const existingICAOs=new Set((decoded.alternates||[]).map(a=>a.icao));
+    adequateAirports.forEach(a=>{if(!existingICAOs.has(a.icao)){decoded.alternates=decoded.alternates||[];decoded.alternates.push(a);}});
+    geocodeFallbacks(decoded);
+    if(!decoded.registration){const rm=ofpText.match(/\bREG\/([A-Z0-9]{3,8})\b/)||ofpText.match(/AIRCRAFT\s*:\s*([A-Z0-9]{3,8})/);if(rm)decoded.registration=rm[1];}
+
+    setP(96,'Building map...');
+    runPerfExtraction(ofpText); // fully client-side, no API
+
+    stopProg();
+    flightData=decoded;rawTextForAge=ofpText;
+    renderResults(decoded);
+    showView('resultsView');
+    // Feature 1: FPL age check
+    if(decoded.std) checkFplAge(ofpText, decoded.std);
+    console.log('[NOTAM] ✓ Analysis complete');
+  }catch(e){
+    stopProg();
+    console.error('[NOTAM] Analysis failed:',e);
+    showError(e.message||'Unknown error — check browser console (F12).');
+  }
+}
+
+// ══ GEOCODE FALLBACK ══
+const ICAO_COORDS={
+  EGCC:[53.353,-2.275],EGPH:[55.950,-3.372],EGPF:[55.872,-4.433],EGBB:[52.454,-1.748],
+  EGNX:[52.831,-1.328],EGGD:[51.382,-2.719],EGHI:[50.950,-1.362],EGNM:[53.866,-1.660],
+  EGKK:[51.148,-0.190],EGSS:[51.885,0.235],EGLC:[51.505,0.055],EGNT:[54.919,-1.691],
+  EIDW:[53.421,-6.270],EICK:[51.841,-8.491],EINN:[52.702,-8.925],
+  EDDF:[50.033,8.571],EDDM:[48.354,11.786],EDDB:[52.366,13.503],EDDL:[51.289,6.767],
+  EDDH:[53.630,9.988],EDDK:[50.866,7.143],
+  EHAM:[52.308,4.764],EBBR:[50.901,4.484],ELLX:[49.627,6.211],
+  LFPG:[49.013,2.550],LFPO:[48.724,2.380],LFMN:[43.665,7.215],
+  LEMD:[40.472,-3.561],LEBL:[41.297,2.078],LPPT:[38.774,-9.134],
+  LIRF:[41.804,12.251],LIML:[45.445,9.276],
+  EPWA:[52.166,20.967],LKPR:[50.101,14.260],
+  EGLL:[51.477,-0.461],
+  OMDB:[25.253,55.366],OMAL:[24.433,54.651],
+  VHHH:[22.308,113.915],ZBAA:[40.080,116.584],ZSPD:[31.143,121.805],
+  RJTT:[35.553,139.781],RKSI:[37.469,126.451],WSSS:[1.350,103.994],
+  LOWW:[48.110,16.570],LHBP:[47.436,19.262],LYBE:[44.818,20.309],
+  LROP:[44.571,26.085],LTFH:[41.254,36.567],LTCE:[39.956,41.170],
+  UGTB:[41.669,44.955],UBBB:[40.467,50.047],ZWWW:[43.907,87.474],
+  ZLIC:[38.322,106.393],ZBSJ:[38.280,114.696],
+  ZHEC:[30.35,115.03],ZHHH:[30.78,114.21],
+  // Adequate airport coords
+  EBOS:[51.199,2.862],EBLG:[50.637,5.443],EHBK:[50.912,5.770],
+  EDFH:[49.948,7.264],ZGGG:[23.392,113.299],ZHCC:[34.519,113.841],
+  ZSHC:[30.229,120.434],ZSJN:[36.857,117.216],ZLDH:[40.161,94.682],
+  UZTT:[41.257,69.281],UCFM:[42.853,74.478],UTTT:[41.311,69.279],
+  UAAA:[43.352,77.040],UATT:[51.022,71.467],
+};
+function geocodeFallbacks(d){
+  (d.alternates||[]).forEach(a=>{if(!validCoords(a)&&ICAO_COORDS[a.icao])[a.lat,a.lon]=ICAO_COORDS[a.icao];});
+  const altCoordMap={};
+  (d.alternates||[]).filter(validCoords).forEach(a=>{altCoordMap[a.icao]=[a.lat,a.lon];});
+  (d.notams||[]).forEach(n=>{if(n.phase==='ALTERNATE'&&!validCoords(n)&&altCoordMap[n.airport])[n.lat,n.lon]=altCoordMap[n.airport];});
+}
+
+// ══ CLIENT-SIDE OFP PARSER — extracts flight data with zero API calls ══
+
+// Nav log parser: extracts highest MORA waypoint and TOC burn-off
+// Format: waypoint line has name + BO(KGS), coordinate line has MORA after lat/lon
+var navLogData=null; // {highestMora:{waypoint,mora,boKg,lat,lon}, tocBoKg, waypoints[]}
+function parseNavLog(text){
+  // ── STEP 1: Normalize pdf.js text ──
+  // pdf.js produces one line per page. We need to split waypoint/coord pairs.
+  var norm=text;
+
+  // Insert \n before every coordinate: N52:49.9 or S43:07.5
+  norm=norm.replace(/\s([NS]\d{2}:\d{2}\.\d)/g,'\n$1');
+
+  // Insert \n before waypoint names: WPTNAME followed by FIR code (4 upper letters)
+  // Pattern: space + 2-6 uppercase/digits + space(s) + 4 uppercase letters + space
+  norm=norm.replace(/\s([A-Z][A-Z0-9]{1,5})\s+([A-Z]{4})\s/g,'\n$1 $2 ');
+
+  // Insert \n before -TOC- -SC- -TD- markers
+  norm=norm.replace(/\s(-TOC-|-SC-|-TD-)\s/g,'\n$1 ');
+
+  var lines=norm.split('\n').map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
+
+  // ── STEP 2: Filter out non-waypoint lines ──
+  lines=lines.filter(function(l){
+    if(l.match(/^FMS\s+IDENT/i)) return false;    // page footer
+    if(l.match(/^WAYPOINT\s+FIR/i)) return false;  // column header
+    if(l.match(/^CO-ORD/i)) return false;           // column header
+    if(l.match(/^RVSM/i)) return false;             // RVSM check line
+    if(l.match(/PPS\s+\d/)) return false;           // page footer
+    return true;
+  });
+
+  // ── STEP 3: Parse waypoint + coordinate pairs ──
+  var coordRe=/^([NS]\d{2}:\d{2}\.\d)\s+([EW]\d{2,3}:\d{2}\.\d)\s+(.*)/;
+  var wptRe=/^([A-Z][A-Z0-9]{1,5})\s+([A-Z]{4})\s/;
+  var tocRe=/^(-TOC-|-SC-|-TD-)\s/;
+
+  var waypoints=[];
+  var tocBoKg=null;
+
+  for(var i=0;i<lines.length;i++){
+    var cm=lines[i].match(coordRe);
+    if(!cm) continue;
+
+    // Parse lat/lon
+    var latM=cm[1].match(/([NS])(\d{2}):(\d{2}\.\d)/);
+    var lonM=cm[2].match(/([EW])(\d{2,3}):(\d{2}\.\d)/);
+    var lat=0,lon=0;
+    if(latM){lat=parseInt(latM[2])+parseFloat(latM[3])/60;if(latM[1]==='S')lat=-lat;}
+    if(lonM){lon=parseInt(lonM[2])+parseFloat(lonM[3])/60;if(lonM[1]==='W')lon=-lon;}
+
+    // Extract MORA: the first number in the remainder after coords
+    var rest=cm[3].trim();
+    var moraParts=rest.split(/\s+/);
+    var mora=0;
+    if(moraParts.length>0){
+      var mv=parseInt(moraParts[0]);
+      if(!isNaN(mv)&&mv>=0&&mv<=999) mora=mv;
+    }
+
+    // Look backwards for the waypoint name line (should be i-1)
+    var wptName='';
+    var boKg=null;
+    for(var j=i-1;j>=Math.max(0,i-5);j--){
+      var wm=lines[j].match(wptRe);
+      if(!wm) wm=lines[j].match(tocRe);
+      if(wm){
+        wptName=wm[1];
+        // BO(KGS) is the last large number on the waypoint line
+        var nums=lines[j].match(/\d+/g);
+        if(nums){
+          for(var k=nums.length-1;k>=0;k--){
+            var n=parseInt(nums[k]);
+            if(n>500 && n<200000){boKg=n;break;}
+          }
+        }
+        break;
+      }
+    }
+
+    if(!wptName) continue;
+
+    // TOC burn-off
+    if(wptName==='-TOC-' && boKg!=null) tocBoKg=boKg;
+
+    waypoints.push({name:wptName, mora:mora, boKg:boKg, lat:lat, lon:lon});
+  }
+
+  // ── STEP 4: Find highest MORA ──
+  var best=null;
+  waypoints.forEach(function(w){
+    if(w.mora>0 && (!best || w.mora>best.mora)) best=w;
+  });
+
+  var result={
+    highestMora: best?{waypoint:best.name, mora:best.mora, boKg:best.boKg, lat:best.lat, lon:best.lon}:null,
+    tocBoKg: tocBoKg,
+    waypoints: waypoints  // store all for debugging
+  };
+
+  // ── Diagnostic log ──
+  console.log('[MORA] Total waypoints parsed: '+waypoints.length);
+  if(waypoints.length>0){
+    // Log top 5 MORA values for verification
+    var sorted=waypoints.slice().filter(function(w){return w.mora>0;}).sort(function(a,b){return b.mora-a.mora;});
+    console.log('[MORA] Top 5 MORA values:');
+    sorted.slice(0,5).forEach(function(w){
+      console.log('  '+w.name+': MORA='+w.mora+' ('+w.mora*100+'ft) BO='+w.boKg+'kg lat='+w.lat.toFixed(2)+' lon='+w.lon.toFixed(2));
+    });
+  }
+  if(best) console.log('[MORA] ✓ Highest: '+best.name+' MORA='+best.mora+' ('+best.mora*100+'ft) BO='+best.boKg+'kg');
+  else console.log('[MORA] ✗ No MORA values found');
+  if(tocBoKg!=null) console.log('[MORA] ✓ TOC burn-off: '+tocBoKg+'kg');
+
+  navLogData=result;
+  return result;
+}
+
+function parseOFP(text, adequateAirports){
+  const d={
+    flightNumber:null, aircraft:null, registration:null, flightLevel:null,
+    departure:null, destination:null, departureRunways:[], destinationRunways:[],
+    std:null, sta:null, windowStart:null, windowEnd:null,
+    overallStatus:'GO', statusReason:'', route:[], alternates:[],
+    notams:[], filteredNotams:[], extractionNotes:'Client-side extraction'
+  };
+
+  // Flight number: FLIGHT:HGO442 or "flight HGO442" or HGO442-EGNX-ZHEC
+  var m=text.match(/FLIGHT\s*[:\s]\s*([A-Z]{2,4}\d{1,5})/i);
+  if(m) d.flightNumber=m[1];
+  else{m=text.match(/flight\s+([A-Z]{2,4}\d{1,5})/i);if(m)d.flightNumber=m[1];}
+
+  // Aircraft type: TYPE : B744 or B747 or similar
+  m=text.match(/TYPE\s*:\s*([A-Z]\d{3}[A-Z0-9]?)/i);
+  if(m) d.aircraft=m[1];
+  else{m=text.match(/\b(B7[24][47][A-Z0-9]?|A3[0-9]{2})\b/);if(m)d.aircraft=m[1];}
+
+  // Registration: AIRCRAFT : GONEF or REG/GONEF
+  m=text.match(/AIRCRAFT\s*:\s*([A-Z0-9]{3,8})/i);
+  if(m) d.registration=m[1];
+  if(!d.registration){m=text.match(/\bREG\/([A-Z0-9-]{3,8})\b/);if(m)d.registration=m[1].replace(/-/g,'');}
+
+  // Flight level: PLANNED FL : 350 or FL350
+  m=text.match(/(?:PLANNED\s+)?FL\s*:?\s*(\d{2,3})/i);
+  if(m) d.flightLevel=parseInt(m[1]);
+
+  // Departure / Destination from route: EGNX-ZHEC or FROM :EGNX
+  m=text.match(/FROM\s*:\s*([A-Z]{4})/i);
+  var depIcao=m?m[1]:null;
+  m=text.match(/TO\s*:\s*([A-Z]{4})/i);
+  var destIcao=m?m[1]:null;
+  // Fallback: flight-dep-dest pattern
+  if(!depIcao||!destIcao){
+    m=text.match(/([A-Z]{4})\s*[-–]\s*([A-Z]{4})(?:\s|$)/);
+    if(m){if(!depIcao)depIcao=m[1];if(!destIcao)destIcao=m[2];}
+  }
+  if(depIcao) d.departure={icao:depIcao,name:'',lat:0,lon:0};
+  if(destIcao) d.destination={icao:destIcao,name:'',lat:0,lon:0};
+
+  // Departure airport name: FROM :EGNX, DERBY/EAST MIDL
+  if(depIcao){m=text.match(new RegExp(depIcao+'[,\\s]+([A-Z][A-Z/ ]{3,30})','i'));if(m)d.departure.name=m[1].trim();}
+  if(destIcao){m=text.match(new RegExp(destIcao+'[,\\s]+([A-Z][A-Z/ ]{3,30})','i'));if(m)d.destination.name=m[1].trim();}
+
+  // STD/STA: DATE:24MAR26 ETD:19:00z ETA:08:00z
+  var dateM=text.match(/DATE\s*:\s*(\d{2})([A-Z]{3})(\d{2})/i);
+  var etdM=text.match(/ETD\s*:\s*(\d{2}):(\d{2})/i);
+  var etaM=text.match(/ETA\s*:\s*(\d{2}):(\d{2})/i);
+  // Also try: STD 241900 format
+  if(!etdM){var stdM=text.match(/STD\s+(\d{2})(\d{2})(\d{2})/);if(stdM)etdM=['',stdM[2],stdM[3]];}
+
+  if(dateM&&etdM){
+    var months={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+    var yr=2000+parseInt(dateM[3]),mo=months[dateM[2].toUpperCase()]||0,dy=parseInt(dateM[1]);
+    var stdDate=new Date(Date.UTC(yr,mo,dy,parseInt(etdM[1]),parseInt(etdM[2])));
+    d.std=stdDate.toISOString();
+    d.windowStart=new Date(stdDate.getTime()-3600000).toISOString();
+    if(etaM){
+      var staDate=new Date(Date.UTC(yr,mo,dy,parseInt(etaM[1]),parseInt(etaM[2])));
+      if(staDate<stdDate)staDate.setUTCDate(staDate.getUTCDate()+1); // next day
+      d.sta=staDate.toISOString();
+      d.windowEnd=new Date(staDate.getTime()+3600000).toISOString();
+    }
+  }
+
+  // Runways: RWY 09 27 or RWY 09/27
+  // Departure runway from departure airport section
+  if(depIcao){
+    m=text.match(new RegExp(depIcao+'[^\\n]*?RWY\\s*([\\d LRC/]+)','i'));
+    if(m){d.departureRunways=m[1].trim().split(/[\s/]+/).filter(r=>/^\d{2}[LRC]?$/.test(r));}
+  }
+  if(destIcao){
+    m=text.match(new RegExp(destIcao+'[^\\n]*?RWY\\s*([\\d LRC/]+)','i'));
+    if(m){d.destinationRunways=m[1].trim().split(/[\s/]+/).filter(r=>/^\d{2}[LRC]?$/.test(r));}
+  }
+
+  // Alternates from adequateAirports (already extracted)
+  d.alternates=(adequateAirports||[]).map(a=>({icao:a.icao,name:a.name||'',lat:a.lat||0,lon:a.lon||0,type:a.type||'enroute_alternate'}));
+
+  // Geocode
+  if(d.departure&&ICAO_COORDS[d.departure.icao]){[d.departure.lat,d.departure.lon]=ICAO_COORDS[d.departure.icao];}
+  if(d.destination&&ICAO_COORDS[d.destination.icao]){[d.destination.lat,d.destination.lon]=ICAO_COORDS[d.destination.icao];}
+
+  console.log(`[NOTAM] OFP parsed: ${d.flightNumber||'?'} ${d.departure?.icao||'?'}-${d.destination?.icao||'?'} FL${d.flightLevel||'?'} STD:${d.std||'?'} REG:${d.registration||'?'}`);
+  return d;
+}
+
+// ══ JSON PARSER (legacy — kept for compatibility) ══
+function robustParse(raw){
+  let s=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'').trim();
+  // Stage 1: direct parse
+  try{return JSON.parse(s);}catch(e1){console.log('[NOTAM] Direct parse failed:',e1.message);}
+  // Stage 2: extract outermost {}
+  const start=s.indexOf('{'),end=s.lastIndexOf('}');
+  if(start!==-1&&end>start){
+    const block=s.slice(start,end+1);
+    try{return JSON.parse(block);}catch(e2){console.log('[NOTAM] Block parse failed:',e2.message);}
+  }
+  // Stage 3: clean invalid escapes
+  let c=s;
+  if(start!==-1) c=s.slice(start);
+  c=c.replace(/\\([^"\\/bfnrtu0-9\n\r])/g,'$1');
+  c=c.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,' ');
+  try{return JSON.parse(c);}catch(_){}
+  // Stage 4: repair strings
+  c=repairJsonStrings(c);
+  try{return JSON.parse(c);}catch(_){}
+  // Stage 5: TRUNCATION RECOVERY — close open brackets/braces
+  console.log('[NOTAM] Attempting truncation recovery...');
+  let repaired=closeTruncatedJson(c);
+  try{return JSON.parse(repaired);}catch(e5){console.log('[NOTAM] Truncation repair attempt 1 failed:',e5.message);}
+  // Stage 6: aggressively strip the last incomplete item and close
+  repaired=stripLastIncompleteItem(c);
+  try{return JSON.parse(repaired);}catch(e6){console.log('[NOTAM] Truncation repair attempt 2 failed:',e6.message);}
+  throw new Error('Could not parse AI response. The output was likely truncated mid-JSON.');
+}
+
+// Close truncated JSON by counting open brackets and appending closers
+function closeTruncatedJson(s){
+  // Remove any trailing incomplete string value
+  // Find the last complete key-value separator
+  let trimmed=s;
+  // Strip trailing partial: anything after the last comma or colon that isn't a closer
+  const lastComma=Math.max(s.lastIndexOf(','),s.lastIndexOf('}'),s.lastIndexOf(']'));
+  if(lastComma>0){
+    const after=s.slice(lastComma+1).trim();
+    // If what's after the last structural char looks like an incomplete value, chop it
+    if(after&&!after.startsWith('}')){
+      trimmed=s.slice(0,lastComma+1);
+    }
+  }
+  // Remove trailing comma before we close
+  trimmed=trimmed.replace(/,\s*$/,'');
+  // Count unmatched openers
+  let braces=0,brackets=0,inStr=false,esc=false;
+  for(let i=0;i<trimmed.length;i++){
+    const ch=trimmed[i];
+    if(esc){esc=false;continue;}
+    if(ch==='\\'){esc=true;continue;}
+    if(ch==='"'){inStr=!inStr;continue;}
+    if(inStr)continue;
+    if(ch==='{')braces++;else if(ch==='}')braces--;
+    if(ch==='[')brackets++;else if(ch===']')brackets--;
+  }
+  // If we're inside a string, close it
+  if(inStr) trimmed+='"';
+  // Append closers
+  let suffix='';
+  for(let i=0;i<brackets;i++) suffix+=']';
+  for(let i=0;i<braces;i++) suffix+='}';
+  console.log(`[NOTAM] Truncation fix: added ${brackets} ] and ${braces} } closers`);
+  return trimmed+suffix;
+}
+
+// More aggressive: find the last complete object in the notams array and close there
+function stripLastIncompleteItem(s){
+  // Find "notams":[ and work from there
+  const notamsIdx=s.indexOf('"notams"');
+  if(notamsIdx===-1) return closeTruncatedJson(s); // fallback
+  // Find the last complete object end (},) before the truncation
+  const afterNotams=s.slice(notamsIdx);
+  const lastCompleteObj=afterNotams.lastIndexOf('},');
+  if(lastCompleteObj===-1) return closeTruncatedJson(s);
+  // Keep everything up to and including that }, then close the array and object
+  const kept=s.slice(0,notamsIdx+lastCompleteObj+1);
+  // Count remaining open brackets
+  let braces=0,brackets=0,inStr=false,esc=false;
+  for(let i=0;i<kept.length;i++){
+    const ch=kept[i];
+    if(esc){esc=false;continue;}if(ch==='\\'){esc=true;continue;}
+    if(ch==='"'){inStr=!inStr;continue;}if(inStr)continue;
+    if(ch==='{')braces++;else if(ch==='}')braces--;
+    if(ch==='[')brackets++;else if(ch===']')brackets--;
+  }
+  let suffix='';
+  for(let i=0;i<brackets;i++) suffix+=']';
+  // Add empty filteredNotams and extractionNotes before closing
+  suffix+=',"filteredNotams":[],"extractionNotes":"Response was truncated — some NOTAMs may be missing"}';
+  braces--; // we manually added one }
+  for(let i=0;i<braces;i++) suffix+='}';
+  console.log(`[NOTAM] Aggressive repair: stripped incomplete item, closed with ${brackets}]+${braces+1}}`);
+  return kept+suffix;
+}
+function repairJsonStrings(s){
+  let out='',inStr=false,escNext=false;
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(!inStr){if(c==='"'){inStr=true;escNext=false;}out+=c;}
+    else{
+      if(escNext){if('"\\\/bfnrtu'.indexOf(c)!==-1||/[0-9]/.test(c)){out+=c;}else if(c==='\n'||c==='\r'){out=out.slice(0,-1)+' ';}else{out=out.slice(0,-1)+c;}escNext=false;continue;}
+      if(c==='\\'){escNext=true;out+=c;continue;}
+      if(c==='"'){let j=i+1;while(j<s.length&&' \t\r\n'.includes(s[j]))j++;const next=s[j]??'';if(':'===next||','===next||'}'===next||']'===next||j>=s.length){inStr=false;out+=c;}else{out+="'";}continue;}
+      if(c==='\n'||c==='\r'){out+=' ';continue;}
+      if(c==='\t'){out+=' ';continue;}
+      out+=c;
+    }
+  }
+  return out;
+}
+function decodeTokens(obj){
+  if(!obj)return obj;
+  if(typeof obj==='string')return obj.replace(/\[Q\]/g,'"').replace(/\[BS\]/g,'\\');
+  if(Array.isArray(obj))return obj.map(decodeTokens);
+  if(typeof obj==='object'){const out={};for(const k in obj)out[k]=decodeTokens(obj[k]);return out;}
+  return obj;
+}
+
+// Map compact API response keys → full keys expected by rendering code
+// Handles BOTH formats: compact (fn,ac,dep.i) and full (flightNumber,aircraft,departure.icao)
+function normaliseResponse(d){
+  if(!d)return d;
+  // Helper: pick first defined value
+  const p=(a,b)=>a!==undefined?a:b;
+  // Top-level scalars
+  const o={};
+  o.flightNumber=p(d.flightNumber,d.fn)||null;
+  o.aircraft=p(d.aircraft,d.ac)||null;
+  o.registration=p(d.registration,d.reg)||null;
+  o.flightLevel=p(d.flightLevel,d.fl)||null;
+  o.plannedTas=p(d.plannedTas,d.tas)||null;
+  o.std=p(d.std,null);
+  o.sta=p(d.sta,null);
+  o.windowStart=p(d.windowStart,d.ws)||null;
+  o.windowEnd=p(d.windowEnd,d.we)||null;
+  o.overallStatus=p(d.overallStatus,d.st)||'CAUTION';
+  o.statusReason=p(d.statusReason,d.sr)||'';
+  o.extractionNotes=p(d.extractionNotes,d.en)||'';
+  o.departureRunways=p(d.departureRunways,d.dr)||[];
+  o.destinationRunways=p(d.destinationRunways,d.ar)||[];
+  // Airports
+  function normAp(a){if(!a)return null;return{icao:p(a.icao,a.i)||'',name:p(a.name,a.n)||'',lat:p(a.lat,a.la)||0,lon:p(a.lon,a.lo)||0};}
+  o.departure=normAp(d.departure||d.dep);
+  o.destination=normAp(d.destination||d.dest);
+  // Alternates
+  o.alternates=(d.alternates||d.alt||[]).map(a=>({icao:p(a.icao,a.i)||'',name:p(a.name,a.n)||'',lat:p(a.lat,a.la)||0,lon:p(a.lon,a.lo)||0,type:p(a.type,a.t)||'enroute_alternate'}));
+  // Route (usually from client-side extraction, but normalise if present)
+  o.route=d.route||[];
+  // NOTAMs
+  o.notams=(d.notams||[]).map(n=>({
+    id:p(n.id,n.i)||'',
+    airport:p(n.airport,n.a)||'',
+    severity:p(n.severity,n.s)||'ADVISORY',
+    subject:p(n.subject,n.j)||'',
+    fullText:p(n.fullText,n.f)||'',
+    validFrom:p(n.validFrom,n.vf)||null,
+    validTo:p(n.validTo,n.vt)||null,
+    matchedKeywords:p(n.matchedKeywords,n.k)||[],
+    affectedRunways:p(n.affectedRunways,n.r)||[],
+    phase:p(n.phase,n.p)||'OTHER',
+    lat:p(n.lat,n.la)||0,
+    lon:p(n.lon,n.lo)||0,
+    affectedAirways:n.affectedAirways||[],
+    affectedFIR:n.affectedFIR||null,
+    qCode:n.qCode||'',
+    closureType:n.closureType||'OTHER',
+    altFloorFt:n.altFloorFt??null,
+    altCeilFt:n.altCeilFt??null,
+  }));
+  o.filteredNotams=d.filteredNotams||[];
+  console.log(`[NOTAM] Normalised: ${o.notams.length} notams, ${o.alternates.length} alternates, status=${o.overallStatus}`);
+  return o;
+}
+
+// ══ ALTERNATE ETA ENGINE ══
+let altETAs={};
+const R_NM=3440.065;
+function haversineDist(la1,lo1,la2,lo2){const toR=d=>d*Math.PI/180;const dLat=toR(la2-la1),dLon=toR(lo2-lo1);const a=Math.sin(dLat/2)**2+Math.cos(toR(la1))*Math.cos(toR(la2))*Math.sin(dLon/2)**2;return R_NM*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function calcAltETAs(d){
+  altETAs={};
+  const pts=[];
+  if(validCoords(d.departure))pts.push({lat:d.departure.lat,lon:d.departure.lon});
+  (d.route||[]).filter(validCoords).forEach(w=>pts.push({lat:w.lat,lon:w.lon}));
+  if(validCoords(d.destination))pts.push({lat:d.destination.lat,lon:d.destination.lon});
+  if(pts.length<2||!d.std)return;
+  let cumNm=0;const timed=[{...pts[0],cumNm:0}];
+  for(let i=1;i<pts.length;i++){cumNm+=haversineDist(pts[i-1].lat,pts[i-1].lon,pts[i].lat,pts[i].lon);timed.push({...pts[i],cumNm});}
+  let gsKts=d.plannedTas||null;
+  if(!gsKts&&d.std&&d.sta){const bh=(new Date(d.sta)-new Date(d.std))/3600000;if(bh>0&&cumNm>0)gsKts=cumNm/bh;}
+  if(!gsKts||gsKts<100||gsKts>700)gsKts=450;
+  const stdMs=new Date(d.std).getTime();
+  timed.forEach(p=>{p.eta=stdMs+(p.cumNm/gsKts)*3600000;p.gsKts=gsKts;});
+  (d.alternates||[]).forEach(alt=>{
+    if(!validCoords(alt))return;
+    let bestDist=Infinity,bestIdx=0;
+    timed.forEach((p,i)=>{const dist=haversineDist(alt.lat,alt.lon,p.lat,p.lon);if(dist<bestDist){bestDist=dist;bestIdx=i;}});
+    let etaMs;
+    if(bestIdx<timed.length-1){const A=timed[bestIdx],B=timed[bestIdx+1];const ab=haversineDist(A.lat,A.lon,B.lat,B.lon);const t=ab>0?Math.max(0,Math.min(1,haversineDist(A.lat,A.lon,alt.lat,alt.lon)/ab)):0;etaMs=A.eta+t*(B.eta-A.eta);}
+    else etaMs=timed[bestIdx].eta;
+    const ed=new Date(etaMs),z=v=>String(v).padStart(2,'0');
+    altETAs[alt.icao]={eta:ed,etaMs,etaStr:`${z(ed.getUTCHours())}:${z(ed.getUTCMinutes())}Z`,distNm:Math.round(bestDist),gsKts:Math.round(gsKts),windowStart:new Date(etaMs-3600000),windowEnd:new Date(etaMs+3600000)};
+  });
+}
+
+// ══ FILTER ENGINE ══
+function validCoords(obj){if(!obj)return false;const la=obj.lat,lo=obj.lon;return typeof la==='number'&&typeof lo==='number'&&!(la===0&&lo===0)&&Math.abs(la)<=90&&Math.abs(lo)<=180;}
+function inWindow(n,ws,we){if(!n.validTo)return true;const from=n.validFrom?new Date(n.validFrom).getTime():0,to=new Date(n.validTo).getTime();return from<=we&&to>=ws;}
+function notamPassesFilters(n){
+  const d=flightData;
+  if(n.phase==='DEPARTURE'){if(d?.std){const m=new Date(d.std).getTime();if(!inWindow(n,m-3600000,m+3600000))return false;}if(selectedDepRwy){const r=n.affectedRunways||[];if(r.length>0&&!r.includes(selectedDepRwy))return false;}return true;}
+  if(n.phase==='DESTINATION'){if(d?.sta){const m=new Date(d.sta).getTime();if(!inWindow(n,m-3600000,m+3600000))return false;}if(selectedArrRwy){const r=n.affectedRunways||[];if(r.length>0&&!r.includes(selectedArrRwy))return false;}return true;}
+  if(n.phase==='ALTERNATE'){const info=n.airport?altETAs[n.airport]:null;if(info&&!inWindow(n,info.etaMs-3600000,info.etaMs+3600000))return false;return true;}
+  if(n.phase==='ENROUTE'&&currentFL!==null){const flFt=currentFL*100;const floor=n.altFloorFt??null,ceil=n.altCeilFt??null;if(ceil!==null&&flFt>ceil)return false;if(floor!==null&&flFt<floor)return false;}
+  return true;
+}
+
+// ══ RENDER RESULTS ══
+function fmtT(iso){if(!iso)return'—';try{const d=new Date(iso),z=v=>String(v).padStart(2,'0');return`${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]} ${z(d.getUTCHours())}:${z(d.getUTCMinutes())}Z`;}catch{return iso;}}
+function renderResults(d){
+  document.getElementById('fsFlightNum').textContent=d.flightNumber||`${d.departure?.icao||'?'} / ${d.destination?.icao||'?'}`;
+  const st=document.getElementById('fsStatus');st.textContent=d.overallStatus||'—';st.className='fs-status '+(d.overallStatus==='GO'?'go':d.overallStatus==='NOGO'?'nogo':'caution');
+  filedFL=null;if(d.flightLevel!=null){const p=parseInt(String(d.flightLevel).replace(/[^\d]/g,''));if(!isNaN(p))filedFL=p;}currentFL=filedFL;
+  document.getElementById('fsRoute').innerHTML=`${esc(d.departure?.icao||'?')} → ${esc(d.destination?.icao||'?')}${d.aircraft?`  ·  ${esc(d.aircraft)}`:''}${d.registration?`  ·  <span style="font-family:var(--mono)">${esc(d.registration)}</span>`:''}`;
+  if(d.registration){document.getElementById('fsReg').textContent=d.registration;document.getElementById('fsRegCell').style.display='block';}
+  document.getElementById('fsStd').textContent=fmtT(d.std);document.getElementById('fsSta').textContent=fmtT(d.sta);
+  document.getElementById('fsWindow').textContent=`⏱  NOTAM Window: ${fmtT(d.windowStart)}  →  ${fmtT(d.windowEnd)}`;
+  selectedDepRwy=null;selectedArrRwy=null;
+  buildRwyChips('dep',d.departureRunways||[]);buildRwyChips('arr',d.destinationRunways||[]);
+  updateFLDisplay();
+  const hasRwys=(d.departureRunways?.length||0)+(d.destinationRunways?.length||0)>0;
+  document.getElementById('ctrlPanel').style.display=(hasRwys||filedFL!==null)?'flex':'none';
+  document.getElementById('depRwyRow').style.display=(d.departureRunways?.length)?'flex':'none';
+  document.getElementById('arrRwyRow').style.display=(d.destinationRunways?.length)?'flex':'none';
+  calcAltETAs(d);
+  const allF=(d.notams||[]).filter(notamPassesFilters);
+  document.getElementById('cntAll').textContent=allF.length;
+  document.getElementById('cntCrit').textContent=allF.filter(x=>x.severity==='CRITICAL').length;
+  document.getElementById('cntSig').textContent=allF.filter(x=>x.severity==='SIGNIFICANT').length;
+  document.getElementById('cntAdv').textContent=allF.filter(x=>x.severity==='ADVISORY').length;
+  buildTabs(d);renderList(d,'ALL','all');buildMap(d);autoPopulateDuty(d);
+}
+
+// ══ RUNWAY CHIPS + FL ══
+function buildRwyChips(which,runways){const id=which==='dep'?'depRwyChips':'arrRwyChips';const el=document.getElementById(id);el.innerHTML='';if(!runways.length)return;const all=document.createElement('button');all.className='rwy-chip all-chip active';all.textContent='ALL';all.onclick=()=>selectRwy(which,null);el.appendChild(all);runways.forEach(rwy=>{const c=document.createElement('button');c.className='rwy-chip';c.textContent=rwy;c.dataset.rwy=rwy;c.onclick=()=>selectRwy(which,rwy);el.appendChild(c);});}
+function selectRwy(which,rwy){if(which==='dep')selectedDepRwy=rwy;else selectedArrRwy=rwy;const id=which==='dep'?'depRwyChips':'arrRwyChips';document.querySelectorAll(`#${id} .rwy-chip`).forEach(c=>{const isAll=c.classList.contains('all-chip');c.classList.toggle('active',rwy===null?isAll:c.dataset.rwy===rwy);});renderList(flightData,activeTab,activeSev);}
+function changeFL(dir){if(filedFL===null)return;const n=currentFL+(dir*FL_STEP);if(n<filedFL-FL_RANGE||n>filedFL+FL_RANGE)return;currentFL=n;updateFLDisplay();renderList(flightData,activeTab,activeSev);}
+function updateFLDisplay(){const disp=document.getElementById('flDisplay'),filed=document.getElementById('flFiled'),mn=document.getElementById('flMinus'),pl=document.getElementById('flPlus');if(filedFL===null){disp.textContent='—';filed.textContent='';mn.disabled=true;pl.disabled=true;return;}disp.textContent=`FL${String(currentFL).padStart(3,'0')}`;const ch=currentFL!==filedFL;disp.classList.toggle('fl-changed',ch);filed.textContent=ch?`(filed FL${String(filedFL).padStart(3,'0')})`:'';mn.disabled=currentFL<=(filedFL-FL_RANGE);pl.disabled=currentFL>=(filedFL+FL_RANGE);}
+
+// ══ TABS + LIST ══
+function buildTabs(d){const t=document.getElementById('tabs');t.innerHTML='';const a=new Set(['ALL']);(d.notams||[]).forEach(n=>{if(n.airport)a.add(n.airport);});a.forEach(x=>{const el=document.createElement('div');el.className='tab'+(x==='ALL'?' active':'');el.textContent=x;el.dataset.a=x;el.onclick=()=>switchTab(x,d);t.appendChild(el);});}
+function switchTab(a,d){activeTab=a;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.a===a));renderList(d,a,activeSev);}
+function filterSev(s){activeSev=s;['All','Critical','Significant','Advisory'].forEach(x=>document.getElementById('cc'+x)?.classList.remove('active'));document.getElementById('cc'+(s==='all'?'All':s[0].toUpperCase()+s.slice(1)))?.classList.add('active');renderList(flightData,activeTab,s);}
+
+function renderList(d,airport,sev){
+  const list=document.getElementById('notamList');list.innerHTML='';
+  let notams=d.notams||[];
+  if(airport!=='ALL')notams=notams.filter(n=>n.airport===airport);
+  if(sev!=='all')notams=notams.filter(n=>n.severity?.toLowerCase()===sev);
+  notams=notams.filter(notamPassesFilters);
+  const so={CRITICAL:0,SIGNIFICANT:1,ADVISORY:2};notams.sort((a,b)=>(so[a.severity]??3)-(so[b.severity]??3));
+  if(!notams.length){list.innerHTML='<div class="empty-state"><div class="es-icon">✓</div><p>No NOTAMs for this selection</p></div>';return;}
+  const phases={};notams.forEach(n=>{const p=n.phase||'OTHER';if(!phases[p])phases[p]=[];phases[p].push(n);});
+  const po=['DEPARTURE','ENROUTE','DESTINATION','ALTERNATE','OTHER'],pl={DEPARTURE:'Departure',ENROUTE:'En-Route',DESTINATION:'Destination',ALTERNATE:'Alternates',OTHER:'Other'};
+  po.forEach(ph=>{if(!phases[ph]?.length)return;const lbl=document.createElement('div');lbl.className='phase-lbl';lbl.textContent=pl[ph]||ph;list.appendChild(lbl);phases[ph].forEach(n=>list.appendChild(buildCard(n)));});
+}
+
+function buildCard(n){
+  const card=document.createElement('div');card.className='notam-card';card.dataset.id=n.id||'';
+  const sev=(n.severity||'').toLowerCase();
+  const vstr=`${n.validFrom?fmtT(n.validFrom):'?'}  →  ${n.validTo?fmtT(n.validTo):'Permanent / UFN'}`;
+  const etaInfo=n.phase==='ALTERNATE'&&n.airport?altETAs[n.airport]:null;
+  const etaTag=etaInfo?`<span class="nc-tag" style="background:#fff8e6;color:#7a5000;border-color:#e0c060;font-weight:600">ETA ${etaInfo.etaStr} ±1hr</span>`:'';
+  card.innerHTML=`<div class="nc-header"><div class="nc-sev-bar ${sev}"></div><div class="nc-inner"><div class="nc-id-row"><span class="nc-id">${esc(n.id||'—')}  ·  ${esc(n.airport||'—')}</span><span class="nc-badge ${sev}">${n.severity||'—'}</span></div><div class="nc-subject">${esc(n.subject||'—')}</div><div class="nc-tags"><span class="nc-tag">${esc(n.phase||'—')}</span><span class="nc-tag">${vstr}</span>${etaTag}${(n.matchedKeywords||[]).slice(0,2).map(k=>`<span class="nc-tag kw">${esc(k)}</span>`).join('')}</div></div></div>
+  <div class="nc-body" id="nb_${eid(n.id)}">
+    <div class="nc-fulltext">${esc(n.fullText||'—')}</div>
+    <div class="nc-section-lbl">Matched Keywords</div>
+    <div class="nc-kw-chips">${(n.matchedKeywords||[]).map(k=>`<span class="nc-kw-chip">${esc(k)}</span>`).join('')||'<span style="font-size:11px;color:var(--text3)">None</span>'}</div>
+    <div class="nc-validity">Valid from: <span>${n.validFrom?fmtT(n.validFrom):'—'}</span><br>Valid to: <span>${n.validTo?fmtT(n.validTo):'Permanent / UFN'}</span></div>
+    ${validCoords(n)?`<button class="nc-map-btn" onclick="flyTo('${esc(n.id)}')">Show on Map</button>`:''}
+  </div>`;
+  card.querySelector('.nc-header').addEventListener('click',()=>{const b=card.querySelector('.nc-body');b.classList.toggle('open');card.classList.toggle('expanded',b.classList.contains('open'));});
+  return card;
+}
+
+function flyTo(id){const n=(flightData?.notams||[]).find(x=>x.id===id);if(!n||!leafletMap)return;let lat=n.lat,lon=n.lon;if(!validCoords({lat,lon})&&n.airport){const ap=[...(flightData.alternates||[]),flightData.departure,flightData.destination].find(a=>a?.icao===n.airport);if(validCoords(ap)){lat=ap.lat;lon=ap.lon;}}if(!validCoords({lat,lon}))return;leafletMap.flyTo([lat,lon],8,{duration:1.2});markers.find(m=>m._nid===id)?.openPopup();}
+function expandCard(id){const card=document.querySelector(`[data-id="${CSS.escape(id)}"]`);if(card){const b=card.querySelector('.nc-body');if(!b.classList.contains('open')){b.classList.add('open');card.classList.add('expanded');}card.scrollIntoView({behavior:'smooth',block:'nearest'});}leafletMap?.closePopup();}
+
+// ══ MAP ══
+let notamMarkers=[];
+function buildMap(d){
+  if(leafletMap){leafletMap.remove();leafletMap=null;}markers=[];notamMarkers=[];
+  leafletMap=L.map('map',{zoomControl:true,attributionControl:false});
+  // Cache-aware tile layer — serves from Cache API when offline
+  var CachedTileLayer=L.TileLayer.extend({
+    createTile:function(coords,done){
+      var tile=document.createElement('img');
+      var url=this.getTileUrl(coords);
+      tile.alt='';
+      tile.setAttribute('role','presentation');
+
+      // Try network first, fall back to cache
+      fetch(url,{mode:'cors'}).then(function(resp){
+        if(resp&&resp.ok){
+          // Store in cache for offline
+          if('caches' in window) caches.open('notam-v1').then(function(c){c.put(url,resp.clone());}).catch(function(){});
+          return resp.blob();
+        }
+        throw new Error('not ok');
+      }).then(function(blob){
+        tile.src=URL.createObjectURL(blob);
+        done(null,tile);
+      }).catch(function(){
+        // Network failed — try cache
+        if('caches' in window){
+          caches.open('notam-v1').then(function(c){return c.match(url);}).then(function(cached){
+            if(cached){cached.blob().then(function(b){tile.src=URL.createObjectURL(b);done(null,tile);});}
+            else{tile.src='';done(null,tile);}
+          }).catch(function(){tile.src='';done(null,tile);});
+        } else {tile.src='';done(null,tile);}
+      });
+      return tile;
+    }
+  });
+  new CachedTileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(leafletMap);
+  // Borders
+  // Country borders (cached for offline)
+  var bordersUrl='https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+  (function(){
+    function loadBorders(data){if(typeof topojson!=='undefined'){var c=topojson.feature(data,data.objects.countries);L.geoJSON(c,{style:{color:'#2c3e50',weight:1.5,fill:false,opacity:0.75}}).addTo(leafletMap);}}
+    fetch(bordersUrl).then(function(r){
+      if('caches' in window) caches.open('notam-v1').then(function(c){c.put(bordersUrl,r.clone());}).catch(function(){});
+      return r.json();
+    }).then(loadBorders).catch(function(){
+      // Offline — try cache
+      if('caches' in window) caches.open('notam-v1').then(function(c){return c.match(bordersUrl);}).then(function(r){if(r)return r.json();}).then(function(d){if(d)loadBorders(d);}).catch(function(){});
+    });
+  })();
+  const pts=[];
+  // Route line — use nav log waypoints for exact route
+  const rp=[];
+  if(navLogData&&navLogData.waypoints&&navLogData.waypoints.length>=2){
+    navLogData.waypoints.forEach(function(w){if(w.lat&&w.lon)rp.push([w.lat,w.lon]);});
+  }
+  // Fallback to extractRouteFromText
+  if(rp.length<2)(d.route||[]).filter(validCoords).forEach(w=>rp.push([w.lat,w.lon]));
+  // Final fallback: just dep→dest
+  if(rp.length<2){if(validCoords(d.departure))rp.push([d.departure.lat,d.departure.lon]);if(validCoords(d.destination))rp.push([d.destination.lat,d.destination.lon]);}
+  if(rp.length>=2){
+    // White border line
+    L.polyline(rp,{color:'#ffffff',weight:5,opacity:0.5,lineJoin:'round'}).addTo(leafletMap);
+    // Main route — dotted navy line
+    L.polyline(rp,{color:'#0f2340',weight:2.5,dashArray:'4 8',opacity:0.9,lineJoin:'round'}).addTo(leafletMap);
+    rp.forEach(p=>pts.push(p));
+    // Small waypoint dots along the route
+    if(navLogData&&navLogData.waypoints){
+      navLogData.waypoints.forEach(function(w){
+        if(!w.lat||!w.lon)return;
+        if(w.name==='-TOC-'||w.name==='-SC-'||w.name==='-TD-')return; // skip pseudo-waypoints
+        L.circleMarker([w.lat,w.lon],{radius:2.5,color:'#0f2340',fillColor:'#fff',fillOpacity:1,weight:1.5,opacity:0.8}).addTo(leafletMap)
+          .bindTooltip(w.name,{permanent:false,direction:'top',offset:[0,-6],className:'wpt-tooltip'});
+      });
+    }
+  }
+  function apLabel(icao,col){return L.divIcon({className:'',html:`<div style="font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:700;color:${col};white-space:nowrap;margin-left:12px;margin-top:-4px;text-shadow:0 1px 4px rgba(255,255,255,0.95)">${esc(icao)}</div>`,iconAnchor:[0,8]});}
+  function addAP(ap,role){if(!validCoords(ap))return;pts.push([ap.lat,ap.lon]);const icon=L.divIcon({className:'',html:'<div style="background:#0a6e35;border:2.5px solid white;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 10px rgba(0,0,0,0.45)"></div>',iconSize:[16,16],iconAnchor:[8,8]});const mk=L.marker([ap.lat,ap.lon],{icon,zIndexOffset:500}).addTo(leafletMap).bindPopup(`<div class="popup-inner"><div class="popup-id">${esc(role)}</div><div class="popup-subject">${esc(ap.icao)} – ${esc(ap.name||'')}</div></div>`);markers.push(mk);L.marker([ap.lat,ap.lon],{icon:apLabel(ap.icao,'#0a6e35'),interactive:false}).addTo(leafletMap);}
+  function addAlt(ap){if(!validCoords(ap))return;pts.push([ap.lat,ap.lon]);const isER=(ap.type||'').includes('enroute'),col=isER?'#a04800':'#0f4fa0';const icon=L.divIcon({className:'',html:`<div style="width:14px;height:14px;background:${col};border:2.5px solid white;transform:rotate(45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>`,iconSize:[14,14],iconAnchor:[7,7]});const mk=L.marker([ap.lat,ap.lon],{icon,zIndexOffset:400}).addTo(leafletMap).bindPopup(`<div class="popup-inner"><div class="popup-id" style="color:${col}">${isER?'En-Route Alt':'Dest Alt'}</div><div class="popup-subject">${esc(ap.icao)} – ${esc(ap.name||'')}</div></div>`);markers.push(mk);L.marker([ap.lat,ap.lon],{icon:apLabel(ap.icao,col),interactive:false}).addTo(leafletMap);}
+  addAP(d.departure,'Departure');addAP(d.destination,'Destination');(d.alternates||[]).forEach(addAlt);
+  // NOTAM markers
+  const sc={CRITICAL:'#c0392b',SIGNIFICANT:'#c47a00',ADVISORY:'#1a5fa0'},sz={CRITICAL:15,SIGNIFICANT:12,ADVISORY:10};
+  const coordFallback={};if(validCoords(d.departure))coordFallback[d.departure.icao]=[d.departure.lat,d.departure.lon];if(validCoords(d.destination))coordFallback[d.destination.icao]=[d.destination.lat,d.destination.lon];(d.alternates||[]).filter(validCoords).forEach(a=>{coordFallback[a.icao]=[a.lat,a.lon];});
+  (d.notams||[]).forEach(n=>{let lat=n.lat,lon=n.lon;if(!validCoords({lat,lon})&&n.airport&&coordFallback[n.airport])[lat,lon]=coordFallback[n.airport];if(!validCoords({lat,lon}))return;pts.push([lat,lon]);const col=sc[n.severity]||'#8a9aaa',s=sz[n.severity]||9;const icon=L.divIcon({className:'',html:`<div style="background:${col};border:2px solid rgba(255,255,255,0.85);border-radius:50%;width:${s}px;height:${s}px;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,0.3)"></div>`,iconSize:[s,s],iconAnchor:[s/2,s/2]});const mk=L.marker([lat,lon],{icon,zIndexOffset:n.severity==='CRITICAL'?300:200}).addTo(leafletMap).bindPopup(`<div class="popup-inner"><div class="popup-sev ${(n.severity||'').toLowerCase()}">${n.severity}</div><div class="popup-id">${esc(n.id||'—')}</div><div class="popup-subject">${esc(n.subject||'—')}</div><button class="popup-btn" onclick="expandCard('${esc(n.id)}')">View Details →</button></div>`);mk._nid=n.id;mk._notam=n;markers.push(mk);notamMarkers.push(mk);});
+  if(pts.length){
+    var bnds=L.latLngBounds(pts).pad(0.14);
+    leafletMap.fitBounds(bnds);
+    // Pre-cache tiles at zoom levels 3-8 for offline use
+    setTimeout(function(){preCacheTiles(bnds,[3,4,5,6,7,8]);},2000);
+  }
+}
+
+// ══ SAVE OFFLINE ══
+function saveOfflineBriefing(){
+  if(!flightData){alert('No data.');return;}
+  try{
+    var d=flightData, notams=d.notams||[];
+    var fn=d.flightNumber||'BRIEF';
+    var depIcao=d.departure?d.departure.icao:'';
+    var destIcao=d.destination?d.destination.icao:'';
+    var status=d.overallStatus||'';
+    var reason=d.statusReason||'';
+    var std=d.std?fmtT(d.std):'—';
+    var sta=d.sta?fmtT(d.sta):'—';
+
+    var notamHtml='';
+    notams.forEach(function(n){
+      var col=n.severity==='CRITICAL'?'#c00':n.severity==='SIGNIFICANT'?'#c80':'#1a5fa0';
+      var vTo=n.validTo?fmtT(n.validTo):'PERM';
+      notamHtml+='<div style="border-left:4px solid '+col+';padding:8px 12px;margin:8px 0">'
+        +'<strong>'+esc(n.severity||'')+' — '+esc(n.id||'')+'</strong> · '+esc(n.airport||'')+' · '+esc(n.phase||'')
+        +'<br>'+esc(n.subject||'')
+        +'<br><small>'+fmtT(n.validFrom)+' → '+vTo+'</small></div>';
+    });
+
+    var page='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>NOTAM Brief – '+esc(fn)+'</title></head>'
+      +'<body style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:20px">'
+      +'<h1>'+esc(fn)+' — '+esc(depIcao)+' → '+esc(destIcao)+'</h1>'
+      +'<p>Status: <strong>'+esc(status)+'</strong> — '+esc(reason)+'</p>'
+      +'<p>STD: '+std+' · STA: '+sta+'</p>'
+      +'<p>NOTAMs: '+notams.length+' safety-relevant</p><hr>'
+      +notamHtml
+      +'<hr><p style="color:#888;font-size:11px">Generated '+new Date().toUTCString()+' — Cross-check with official sources.</p>'
+      +'</body></html>';
+
+    var blob=new Blob([page],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='NOTAM_Brief_'+fn.replace(/[^A-Z0-9]/gi,'_')+'.html';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    var banner=document.getElementById('saveBanner');
+    if(banner){banner.classList.add('show');setTimeout(function(){banner.classList.remove('show');},5000);}
+  }catch(e){
+    console.error('[SAVE] Error:',e);
+    alert('Save failed: '+e.message);
+  }
+}
+
+// ══ PERFORMANCE ══
+var perfData=null;
+var perfRampAdj=null; // manual ramp override
+
+// ══ PERFORMANCE LOOKUP TABLES (from Boeing 747 FCOM) ══
+// [weight_1000kg, value] — interpolate between rows
+// VREF KIAS — same for both engine types
+const VREF_TABLE=[[400,184],[380,179],[360,174],[340,168],[320,163],[300,157],[280,152],[260,146],[240,140],[220,133],[200,127]];
+
+// Optimum Altitude — ISA+10 & below
+const OPT_ALT_CF6=[[420,28500],[400,29600],[380,30700],[360,31900],[340,33100],[320,34400],[300,35700],[280,37200],[260,38700],[240,40400],[220,42200],[200,44200]];
+const OPT_ALT_PW4=[[400,27600],[380,28800],[360,30000],[340,31200],[320,32500],[300,33900],[280,35400],[260,36900],[240,38600],[220,40400],[200,42400],[180,44600]];
+
+// 1 Engine Inop — ISA+10 & below [weight_1000kg, driftdown_speed_kias, level_off_alt_ft]
+const OEI_CF6=[[420,313,25500],[400,306,26900],[380,299,28400],[360,292,29700],[340,284,31200],[320,276,32700],[300,268,34200],[280,259,35500],[260,250,36900],[240,240,38500],[220,230,40200],[200,219,42000]];
+const OEI_PW4=[[400,304,25000],[380,297,26600],[360,290,28300],[340,282,29900],[320,275,31600],[300,267,33100],[280,259,34600],[260,249,36000],[240,239,37500],[220,229,39000],[200,217,40700]];
+
+// 2 Engine Inop — ISA+10 & below [weight_1000kg, driftdown_speed_kias, level_off_alt_ft]
+const TEI_CF6=[[420,304,10800],[410,301,11700],[400,297,12600],[390,294,13600],[380,290,14600],[370,287,15600],[360,283,16600],[350,280,17600],[340,276,18700],[330,272,19900],[320,269,21000],[310,264,22000],[300,261,23100],[290,256,24000],[280,252,25000],[270,248,25900],[260,243,26700],[250,239,27600],[240,234,28500],[230,229,29400],[220,224,30300],[210,219,31300],[200,213,32300]];
+const TEI_PW4=[[400,296,10100],[390,292,11200],[380,289,12200],[370,286,13200],[360,282,14300],[350,279,15300],[340,275,16300],[330,271,17300],[320,267,18400],[310,263,19400],[300,259,20500],[290,255,21500],[280,251,22600],[270,247,23700],[260,243,24800],[250,238,25900],[240,233,27000],[230,229,28100],[220,224,29200],[210,219,30200],[200,213,31200]];
+
+function perfInterp(table,wKg,col){
+  var w=wKg/1000;
+  for(var i=0;i<table.length-1;i++){
+    var w1=table[i][0],w2=table[i+1][0];
+    if(w<=w1&&w>=w2){var f=(w1-w)/(w1-w2);return Math.round(table[i][col]+f*(table[i+1][col]-table[i][col]));}
+  }
+  return w>table[0][0]?table[0][col]:table[table.length-1][col];
+}
+function getEngine(reg){return(reg||'').replace(/[-\s]/g,'').toUpperCase()==='GONEF'?'CF6':'PW4';}
+
+// ══ CLIENT-SIDE FUEL/WEIGHT PARSER — zero AI, regex only ══
+// Every number comes directly from the OFP text. Nothing inferred.
+function parsePerfData(rawText){
+  var d={registration:null,rampWeight:null,taxiFuel:null,tripFuel:null,contFuel:null,
+    altFuel:null,fresFuel:null,additFuel:null,reqFuel:null,extraFuel:null,altIcao:null,
+    zfw:null,maxZfw:null,maxRampWeight:null,maxTow:null,maxLdw:null,pldw:null,
+    depElevFt:null,destElevFt:null};
+  var m;
+
+  // Registration: AIRCRAFT : GONEF or REG/GONEF
+  m=rawText.match(/AIRCRAFT\s*:\s*([A-Z0-9]{3,8})/i);
+  if(m) d.registration=m[1];
+  if(!d.registration){m=rawText.match(/\bREG\/([A-Z0-9-]{3,8})\b/);if(m)d.registration=m[1].replace(/-/g,'');}
+
+  // ── FUEL SUMMARY (from fuel block) ──
+  // TRIP XXXX  96558
+  m=rawText.match(/TRIP\s+[A-Z]{4}\s+(\d+)/); if(m) d.tripFuel=parseInt(m[1]);
+  // CF  3%  3037  (contingency fuel)
+  m=rawText.match(/CF\s+\d+%\s+(\d+)/); if(m) d.contFuel=parseInt(m[1]);
+  // ALT XXXX  4675
+  m=rawText.match(/ALT\s+([A-Z]{4})\s+(\d+)/); if(m){d.altIcao=m[1];d.altFuel=parseInt(m[2]);}
+  // FRES  2735
+  m=rawText.match(/FRES\s+(\d+)/); if(m) d.fresFuel=parseInt(m[1]);
+  // TAXI  1000
+  m=rawText.match(/TAXI\s+(\d+)/); if(m) d.taxiFuel=parseInt(m[1]);
+  // ADDIT  0
+  m=rawText.match(/ADDIT\s+(\d+)/); if(m) d.additFuel=parseInt(m[1]);
+  // REQ  108005
+  m=rawText.match(/REQ\s+(\d+)/); if(m) d.reqFuel=parseInt(m[1]);
+  // EXTRA  0
+  m=rawText.match(/EXTRA\s+(\d+)/); if(m) d.extraFuel=parseInt(m[1]);
+  // RAMP  108005 (fuel figure, before the weight block)
+  m=rawText.match(/\bRAMP\s+(\d{4,7})\s/); if(m) d.rampFuelFigure=parseInt(m[1]);
+
+  // ── WEIGHT SUMMARY ──
+  // ZFW  161169
+  m=rawText.match(/ZFW\s+(\d+)/); if(m) d.zfw=parseInt(m[1]);
+  // PLDW  171616
+  m=rawText.match(/PLDW\s+(\d+)/); if(m) d.pldw=parseInt(m[1]);
+  // RAMP WT  269174
+  m=rawText.match(/RAMP\s+WT\s+(\d+)/); if(m) d.rampWeight=parseInt(m[1]);
+  // PTOW  268174  or  T.O FUEL / ATOW
+  m=rawText.match(/PTOW\s+(\d+)/); if(m) d.ptow=parseInt(m[1]);
+
+  // ── MAX STRUCTURAL WEIGHTS ──
+  // ZERO FUEL WEIGHT  277144
+  m=rawText.match(/ZERO\s+FUEL\s+WEIGHT\s+(\d+)/); if(m) d.maxZfw=parseInt(m[1]);
+  // TAKE OFF WEIGHT  412769
+  m=rawText.match(/TAKE\s+OFF\s+WEIGHT\s+(\d+)/); if(m) d.maxTow=parseInt(m[1]);
+  // LANDING WEIGHT  302092
+  m=rawText.match(/LANDING\s+WEIGHT\s+(\d+)/); if(m) d.maxLdw=parseInt(m[1]);
+  // RAMP WEIGHT (max)  413769  — the one after "RAMP WEIGHT" in the max column
+  m=rawText.match(/RAMP\s+WEIGHT\s+(\d+)/); if(m) d.maxRampWeight=parseInt(m[1]);
+
+  // ── ELEVATIONS ──
+  // EGNX  306ft or DEP ELEV
+  m=rawText.match(/(\w{4})\s+(\d+)\s*ft\s+MORA/); if(m) d.depElevFt=parseInt(m[2]);
+  // ZHEC ELEV : 77 FT
+  m=rawText.match(/ELEV\s*:\s*(\d+)\s*FT/i); if(m) d.destElevFt=parseInt(m[1]);
+
+  // ── FPL CREATED ──
+  m=rawText.match(/FPL CREATED\s*:\s*(\d{6})/i); if(m) d.fplCreated=m[1];
+
+  // Log everything for verification
+  console.log('[PERF] Client-side extraction:');
+  console.log('[PERF]   Registration:', d.registration);
+  console.log('[PERF]   Ramp WT:', d.rampWeight, '| ZFW:', d.zfw, '| PLDW:', d.pldw);
+  console.log('[PERF]   Trip:', d.tripFuel, '| Cont:', d.contFuel, '| Alt:', d.altFuel, '('+d.altIcao+')');
+  console.log('[PERF]   FRes:', d.fresFuel, '| Taxi:', d.taxiFuel, '| Addit:', d.additFuel, '| Extra:', d.extraFuel);
+  console.log('[PERF]   Req:', d.reqFuel, '| Ramp Fuel:', d.rampFuelFigure);
+  console.log('[PERF]   Max ZFW:', d.maxZfw, '| Max TOW:', d.maxTow, '| Max LDW:', d.maxLdw, '| Max Ramp:', d.maxRampWeight);
+  console.log('[PERF]   Dep Elev:', d.depElevFt, 'ft | Dest Elev:', d.destElevFt, 'ft');
+
+  return d;
+}
+
+function runPerfExtraction(rawText){
+  try{
+    perfData=parsePerfData(rawText);perfRampAdj=null;renderPerf();
+    var badge=document.getElementById('perfBadge');
+    if(badge&&perfData.registration){badge.textContent=perfData.registration;badge.classList.add('populated');}
+  }catch(e){console.warn('[Perf] Parse error:',e);}
+}
+
+// ══ FPL AGE CHECK (Feature 1) ══
+function checkFplAge(ofpText,std){
+  var el=document.getElementById('fplAgeWarning');if(!el)return;
+  try{
+    var cm=ofpText.match(/FPL CREATED\s*:?\s*(\d{6})/i);
+    if(!cm)return;
+    var ddhhmm=cm[1];
+    var stdDate=new Date(std);
+    // FPL CREATED is DDHHMM — use STD's month/year
+    var day=parseInt(ddhhmm.slice(0,2)),hh=parseInt(ddhhmm.slice(2,4)),mm=parseInt(ddhhmm.slice(4,6));
+    var created=new Date(Date.UTC(stdDate.getUTCFullYear(),stdDate.getUTCMonth(),day,hh,mm));
+    // If created day > STD day, it's probably previous month
+    if(created>stdDate) created.setUTCMonth(created.getUTCMonth()-1);
+    var diffHrs=(stdDate-created)/3600000;
+    if(diffHrs>12){
+      el.style.display='block';el.style.background='rgba(192,57,43,0.25)';el.style.border='1px solid rgba(192,57,43,0.5)';el.style.color='#ff8a7a';
+      el.textContent=`⚠ FPL CREATED ${Math.floor(diffHrs)}h ${Math.round((diffHrs%1)*60)}m before STD — exceeds 12hr limit. Brief may be outdated.`;
+    } else {
+      el.style.display='block';el.style.background='rgba(78,203,128,0.1)';el.style.border='1px solid rgba(78,203,128,0.25)';el.style.color='#4ecb80';
+      el.textContent=`✓ FPL created ${Math.floor(diffHrs)}h ${Math.round((diffHrs%1)*60)}m before STD — within 12hr window`;
+    }
+  }catch(e){console.warn('[FPL Age]',e);}
+}
+
+// ══ RENDER PERFORMANCE (Features 2-8) ══
+function renderPerf(){
+  var c=document.getElementById('perfContainer');if(!c||!perfData)return;
+  var d=perfData;
+  // Ramp Fuel = total fuel on board = Ramp Weight - ZFW (from flight plan)
+  var zfw=d.zfw||0;
+  var planRampFuel=(d.rampWeight&&d.zfw)?(d.rampWeight-d.zfw):(d.rampWeight||0);
+  var rampFuel=perfRampAdj!=null?perfRampAdj:planRampFuel;
+  var taxi=d.taxiFuel||0;
+  var rampWt=zfw+rampFuel;  // Ramp Weight = ZFW + Ramp Fuel
+  var tow=rampWt-taxi;       // TOW = Ramp Weight - Taxi Fuel
+  var eng=getEngine(d.registration);
+  var engName=eng==='CF6'?'CF6-80C2B5F':'PW4056';
+  var fmtW=function(v){return v==null?'—':Number(v).toLocaleString()+' kg';};
+  var fmtN=function(v){return v==null?'—':Number(v).toLocaleString();};
+
+  // TOC Gross Weight = TOW - fuel burn to TOC (client-side from nav log)
+  var tocBurn=navLogData?.tocBoKg!=null?navLogData.tocBoKg:(d.tocBoKg||null);
+  var tocGW=tocBurn!=null?tow-tocBurn:null;
+  if(tocGW!=null&&tocGW<100000) tocGW=null;
+
+  // Optimum Altitude
+  var optAltTable=eng==='CF6'?OPT_ALT_CF6:OPT_ALT_PW4;
+  var optAlt=tocGW?perfInterp(optAltTable,tocGW,1):null;
+
+  // MORA + GW at MORA waypoint (client-side from nav log — NOT AI)
+  var moraSrc=navLogData?.highestMora||d.highestMora||null;
+  var moraWpt=moraSrc?.waypoint||null;
+  var moraVal=moraSrc?.mora!=null?moraSrc.mora*100:null;
+  var moraBO=moraSrc?.boKg!=null?moraSrc.boKg:null;
+  var moraLat=moraSrc?.lat||0;
+  var moraLon=moraSrc?.lon||0;
+  var moraGW=moraBO!=null?tow-moraBO:null;
+  if(moraGW!=null&&moraGW<100000) moraGW=null;
+
+  // Driftdown at MORA GW
+  var oeiTable=eng==='CF6'?OEI_CF6:OEI_PW4;
+  var teiTable=eng==='CF6'?TEI_CF6:TEI_PW4;
+  var oeiAlt=moraGW?perfInterp(oeiTable,moraGW,2):null;
+  var oeiSpd=moraGW?perfInterp(oeiTable,moraGW,1):null;
+  var teiAlt=moraGW?perfInterp(teiTable,moraGW,2):null;
+  var teiSpd=moraGW?perfInterp(teiTable,moraGW,1):null;
+
+  // Vref speeds
+  var vref30_tow=tow>0?perfInterp(VREF_TABLE,tow,1):null;
+  var pldw=d.pldw||null;
+  var vref30_ldw=pldw?perfInterp(VREF_TABLE,pldw,1):null;
+
+  // Elevation correction: +1kt per 4000ft
+  var depElev=d.depElevFt||0;
+  var destElev=d.destElevFt||0;
+  var depCorr=Math.round(depElev/4000);
+  var destCorr=Math.round(destElev/4000);
+  if(vref30_tow)vref30_tow+=depCorr;
+  if(vref30_ldw)vref30_ldw+=destCorr;
+
+  // Weight flags
+  var towOver309=tow>309000;
+  var maxLdw=d.maxLdw||0;
+  var fuelDump=maxLdw>0&&tow>maxLdw?tow-maxLdw:0;
+
+  // ── BUILD HTML ──
+  var h='';
+  // Header
+  h+=`<div style="background:var(--navy);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;border-radius:10px;margin-bottom:16px">
+    <div><div style="font-family:var(--mono);font-size:22px;font-weight:800;color:#fff">${d.registration||'—'}</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px">${engName} · B747-400</div></div>
+    <div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.45);text-transform:uppercase">Ramp Weight</div>
+    <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:#fff">${fmtW(rampWt)}</div>
+    </div></div>`;
+
+  // ══ WEIGHTS (Feature 2 cascade) ══
+  h+=`<div class="perf-card" style="margin-bottom:16px">
+    <div style="padding:12px 20px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">Aircraft Weights</div>`;
+  [{l:'ZFW',v:d.zfw,m:d.maxZfw},{l:'Takeoff Weight (TOW)',v:tow,m:d.maxTow},{l:'Ramp Weight',v:rampWt,m:d.maxRampWeight},{l:'Planned Landing Weight',v:pldw,m:d.maxLdw}].forEach(function(x){
+    if(x.v==null)return;
+    var p=x.m?Math.min(100,Math.round(x.v/x.m*100)):0;
+    var col=p>=100?'var(--red)':p>=90?'var(--amber)':'var(--green)';
+    h+=`<div class="perf-bar-row"><div class="perf-bar-top"><span class="perf-bar-name">${x.l}</span><span class="perf-bar-val">${fmtW(x.v)}</span></div>
+    <div class="perf-bar-track"><div class="perf-bar-fill" style="width:${p}%;background:${col}"></div></div>
+    ${x.m?`<div class="perf-bar-max">max ${fmtW(x.m)}</div>`:''}</div>`;
+  });
+
+  // TOW > 309,000 kg warning (Feature 5)
+  if(towOver309) h+=`<div style="padding:10px 20px;background:var(--red-bg);border-top:1.5px solid var(--red-border);font-size:12px;font-weight:700;color:var(--red)">⚠ TOW ${fmtW(tow)} exceeds 309,000 kg</div>`;
+
+  // Fuel dump (Feature 8)
+  if(fuelDump>0) h+=`<div style="padding:10px 20px;background:var(--amber-bg);border-top:1.5px solid var(--amber-border);font-size:12px;font-weight:700;color:var(--amber)">⚠ FUEL DUMP REQUIRED if returning: ${fmtW(fuelDump)} (TOW ${fmtW(tow)} − MLW ${fmtW(maxLdw)})</div>`;
+  h+=`</div>`;
+
+  // ══ FUEL BREAKDOWN ══
+  h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:12px 20px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">Fuel Breakdown</div>`;
+  [{l:'Trip',v:d.tripFuel},{l:'Contingency',v:d.contFuel},{l:'Alternate → '+(d.altIcao||''),v:d.altFuel},{l:'Final Reserve',v:d.fresFuel},{l:'Additional',v:d.additFuel},{l:'Extra',v:d.extraFuel},{l:'Taxi',v:d.taxiFuel}].forEach(function(x){
+    if(!x.v)return;h+=`<div class="perf-kv"><span class="perf-kv-label">${x.l}</span><span class="perf-kv-val">${fmtW(x.v)}</span></div>`;
+  });
+  // Editable Ramp Fuel row
+  h+=`<div class="perf-kv" style="background:var(--blue-bg);gap:8px">
+    <span class="perf-kv-label" style="font-weight:700">Ramp Fuel${perfRampAdj!=null?' <span style="color:var(--amber);font-size:9px;font-weight:700;letter-spacing:.5px">✎ ADJUSTED</span>':''}</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <input type="number" id="perfRampInput" value="${rampFuel}" style="font-family:var(--mono);font-size:14px;font-weight:600;width:110px;padding:4px 8px;border:1.5px solid var(--blue-border);border-radius:5px;outline:none;text-align:right;background:#fff;color:var(--text)" onkeydown="if(event.key==='Enter')perfSetRamp()" />
+      <span style="font-size:12px;color:var(--text3)">kg</span>
+      <button onclick="perfSetRamp()" style="padding:4px 10px;border-radius:4px;border:none;background:var(--blue);color:#fff;font-size:11px;font-weight:600;cursor:pointer">Set</button>
+      ${perfRampAdj!=null?'<button onclick="perfResetRamp()" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer">Reset</button>':''}
+    </div></div></div>`;
+
+  // ══ OPTIMUM ALTITUDE (Features 3) ══
+  h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:14px 20px;background:#f3f0ff;border-bottom:1.5px solid #ddd6fe;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-size:10px;font-weight:700;color:#5b21b6;letter-spacing:1px;text-transform:uppercase">Optimum Cruise Altitude · ${engName} · ISA+10°C & Below</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:3px">TOC GW: ${fmtW(tocGW)} (TOW ${fmtW(tow)} − burn ${fmtW(tocBurn)})</div></div>
+    <div style="text-align:right"><div style="font-family:var(--mono);font-size:36px;font-weight:800;color:#5b21b6">${optAlt?'FL'+Math.round(optAlt/100):'—'}</div>
+    ${optAlt?`<div style="font-size:11px;color:var(--text3)">${fmtN(optAlt)} ft</div>`:''}</div></div></div>`;
+
+  // ══ HIGHEST MORA + DRIFTDOWN (Feature 4) ══
+  if(moraWpt){
+    h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:14px 20px;background:var(--amber-bg);border-bottom:1.5px solid var(--amber-border);display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:10px;font-weight:700;color:var(--amber);letter-spacing:1px;text-transform:uppercase">Highest MORA Waypoint</div>
+      <div style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text);margin-top:3px">${esc(moraWpt)}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">MORA: ${moraVal?fmtN(moraVal)+' ft':'—'} · GW at waypoint: ${fmtW(moraGW)}</div></div>
+      <div style="text-align:right;font-size:11px;color:var(--text3)">Fuel burn: ${fmtW(moraBO)}</div></div>`;
+    // Driftdown table
+    h+=`<table style="width:100%;border-collapse:collapse"><thead><tr>
+      <th style="background:var(--navy);color:#e0f2fe;padding:9px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em">${engName}</th>
+      <th style="background:var(--navy);color:#e0f2fe;padding:9px 16px;text-align:center;font-size:10px">1 ENGINE INOP</th>
+      <th style="background:var(--navy);color:#e0f2fe;padding:9px 16px;text-align:center;font-size:10px">2 ENGINES INOP</th></tr></thead><tbody>
+      <tr><td style="padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">Level-off Altitude</td>
+        <td style="padding:8px 16px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue)">${oeiAlt?'FL'+Math.round(oeiAlt/100)+' ('+fmtN(oeiAlt)+' ft)':'—'}</td>
+        <td style="padding:8px 16px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-size:16px;font-weight:700;color:var(--red)">${teiAlt?'FL'+Math.round(teiAlt/100)+' ('+fmtN(teiAlt)+' ft)':'—'}</td></tr>
+      <tr><td style="padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">Driftdown Speed</td>
+        <td style="padding:8px 16px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono)">${oeiSpd?oeiSpd+' kt':'—'}</td>
+        <td style="padding:8px 16px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono)">${teiSpd?teiSpd+' kt':'—'}</td></tr>
+    </tbody></table>`;
+
+    // ══ NEAREST ADEQUATE AERODROMES WITHIN 720nm OF MORA WAYPOINT ══
+    if(flightData && flightData.alternates){
+      // Use coords from nav log parser directly
+      if(!moraLat&&!moraLon&&flightData.route){
+        flightData.route.forEach(function(w){
+          if(w.id===moraWpt||w.name===moraWpt){moraLat=w.lat;moraLon=w.lon;}
+        });
+      }
+      if(!moraLat&&!moraLon&&ICAO_COORDS[moraWpt]){
+        moraLat=ICAO_COORDS[moraWpt][0];moraLon=ICAO_COORDS[moraWpt][1];
+      }
+
+      if(moraLat||moraLon){
+        var nearbyAlts=[];
+        flightData.alternates.forEach(function(alt){
+          var aLat=alt.lat,aLon=alt.lon;
+          if(!aLat&&!aLon&&ICAO_COORDS[alt.icao]){aLat=ICAO_COORDS[alt.icao][0];aLon=ICAO_COORDS[alt.icao][1];}
+          if(!aLat&&!aLon)return;
+          var dist=haversineDist(moraLat,moraLon,aLat,aLon);
+          if(dist<=720) nearbyAlts.push({icao:alt.icao,name:alt.name||'',type:alt.type||'',dist:Math.round(dist)});
+        });
+        nearbyAlts.sort(function(a,b){return a.dist-b.dist;});
+
+        if(nearbyAlts.length>0){
+          h+=`<div style="padding:12px 20px;border-top:1.5px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Adequate Aerodromes Within 720nm of ${esc(moraWpt)}</div>`;
+          nearbyAlts.forEach(function(a){
+            var typeLbl=a.type.includes('enroute')?'ERA':'DEST ALT';
+            h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)">${esc(a.icao)}</span>
+                <span style="font-size:12px;color:var(--text2)">${esc(a.name)}</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${a.type.includes('enroute')?'var(--amber-bg)':'var(--blue-bg)'};color:${a.type.includes('enroute')?'var(--amber)':'var(--blue)'};border:1px solid ${a.type.includes('enroute')?'var(--amber-border)':'var(--blue-border)'}">${typeLbl}</span>
+              </div>
+              <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--navy)">${a.dist} nm</span>
+            </div>`;
+          });
+          h+=`</div>`;
+        } else {
+          h+=`<div style="padding:10px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)">No adequate aerodromes within 720nm of ${esc(moraWpt)}</div>`;
+        }
+      }
+    }
+    h+=`</div>`;
+  }
+
+  // ══ DEPARTURE SPEEDS (Features 5, 6, 7) ══
+  if(vref30_tow){
+    h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:14px 20px;background:var(--blue-bg);border-bottom:1.5px solid var(--blue-border);display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:1px;text-transform:uppercase">Departure Speeds · TOW ${fmtW(tow)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">Dep elev ${fmtN(depElev)} ft${depCorr>0?' · +'+depCorr+' kt correction':''}</div></div>
+      <div style="text-align:right"><div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:1px">VREF 30</div>
+      <div style="font-family:var(--mono);font-size:32px;font-weight:800;color:var(--blue)">${vref30_tow} <span style="font-size:13px;font-weight:400;color:var(--text2)">kt</span></div></div></div>`;
+    var speeds=[
+      {n:'Vref 30',s:vref30_tow,d:'',cls:'background:var(--blue-bg)'},
+      {n:'Flap 20',s:vref30_tow+10,d:'Vref30 +10'},
+      {n:'Flap 10',s:vref30_tow+20,d:'Vref30 +20'},
+      {n:'Flap 5',s:vref30_tow+40,d:'Vref30 +40'},
+      {n:'Flap 1',s:vref30_tow+60,d:'Vref30 +60'},
+      {n:'Flap Up',s:vref30_tow+100,d:'Vref30 +100'},
+      {n:'Max Angle of Climb (Vx)',s:vref30_tow+115,d:'Vref30 +115',cls:'border-top:2px solid var(--border);background:var(--green-bg)'},
+      {n:'Max Rate of Climb (Vy)',s:vref30_tow+140,d:'Vref30 +140',cls:'background:var(--green-bg)'},
+    ];
+    speeds.forEach(function(sp){
+      h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid var(--border);${sp.cls||''}">
+        <div><span style="font-size:13px;font-weight:${sp.cls?700:500};color:var(--text)">${sp.n}</span>
+        ${sp.d?`<span style="font-size:11px;color:var(--text3);margin-left:8px">${sp.d}</span>`:''}</div>
+        <span style="font-family:var(--mono);font-size:18px;font-weight:700;color:${sp.cls&&sp.cls.includes('green')?'var(--green)':'var(--text)'}">${sp.s} <span style="font-size:11px;font-weight:400;color:var(--text2)">kt</span></span></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // ══ LANDING SPEEDS (Feature 5) ══
+  if(vref30_ldw){
+    h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:14px 20px;background:var(--green-bg);border-bottom:1.5px solid var(--green-border);display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;text-transform:uppercase">Landing Speeds · PLDW ${fmtW(pldw)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">Dest elev ${fmtN(destElev)} ft${destCorr>0?' · +'+destCorr+' kt correction':''}</div></div>
+      <div style="text-align:right"><div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px">UP SPEED</div>
+      <div style="font-family:var(--mono);font-size:32px;font-weight:800;color:var(--green)">${vref30_ldw+100} <span style="font-size:13px;font-weight:400;color:var(--text2)">kt</span></div></div></div>`;
+    [{n:'Vref 30',s:vref30_ldw,d:''},{n:'Flap 20',s:vref30_ldw+10,d:'Vref30 +10'},{n:'Flap 10',s:vref30_ldw+20,d:'Vref30 +20'},{n:'Flap 5',s:vref30_ldw+40,d:'Vref30 +40'},{n:'Flap 1',s:vref30_ldw+60,d:'Vref30 +60'},{n:'Flap Up / Go-Around',s:vref30_ldw+100,d:'Vref30 +100'}].forEach(function(sp){
+      h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid var(--border)">
+        <div><span style="font-size:13px;font-weight:500;color:var(--text)">${sp.n}</span>
+        ${sp.d?`<span style="font-size:11px;color:var(--text3);margin-left:8px">${sp.d}</span>`:''}</div>
+        <span style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text)">${sp.s} <span style="font-size:11px;font-weight:400;color:var(--text2)">kt</span></span></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  c.innerHTML=h;
+}
+
+function perfSetRamp(){
+  var inp=document.getElementById('perfRampInput');
+  if(!inp)return;var v=parseInt(inp.value);
+  if(!isNaN(v)&&v>0){perfRampAdj=v;renderPerf();}
+}
+function perfResetRamp(){perfRampAdj=null;renderPerf();}
+
+// ══ UTILS ══
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function eid(s){return String(s||'').replace(/[^\w-]/g,'_');}
+
+
+
+// ═══════════════════════════════════════════════════════════════
+//  ONE AIR FTL ENGINE — OMA Issue 4/Rev 0 · ORO.FTL / CS-FTL.1
+// ═══════════════════════════════════════════════════════════════
+const T73=[
+  [360,809,[780,750,720,690,660,630,600,570,540]],
+  [810,839,[765,735,705,675,645,615,585,555,540]],
+  [840,869,[750,720,690,660,630,600,570,540,540]],
+  [870,899,[735,705,675,645,615,585,555,540,540]],
+  [900,929,[720,690,660,630,600,570,540,540,540]],
+  [930,959,[705,675,645,615,585,555,540,540,540]],
+  [960,989,[690,660,630,600,570,540,540,540,540]],
+  [990,1019,[675,645,615,585,555,540,540,540,540]],
+  [300,314,[720,690,660,630,600,570,540,540,540]],
+  [315,329,[735,705,675,645,615,585,555,540,540]],
+  [330,344,[750,720,690,660,630,600,570,540,540]],
+  [345,359,[765,735,705,675,645,615,585,555,540]],
+];
+const T73N=[660,630,600,570,540,540,540,540,540];
+const T74=[660,630,600,570,540,540,540];
+const T76={1:[960,1020],2:[900,960],3:[840,900]};
+const T73D=[
+  ["06:00–13:29",T73[0][2]],["13:30–13:59",T73[1][2]],
+  ["14:00–14:29",T73[2][2]],["14:30–14:59",T73[3][2]],
+  ["15:00–15:29",T73[4][2]],["15:30–15:59",T73[5][2]],
+  ["16:00–16:29",T73[6][2]],["16:30–16:59",T73[7][2]],
+  ["17:00–04:59",T73N],
+  ["05:00–05:14",T73[8][2]],["05:15–05:29",T73[9][2]],
+  ["05:30–05:44",T73[10][2]],["05:45–05:59",T73[11][2]],
+];
+
+const t2m=s=>{if(!s||!s.includes(':'))return null;const[h,m]=s.split(':').map(Number);return h*60+m;};
+const hm=m=>{if(m===null||isNaN(m))return'--:--';const sg=m<0?'-':'',a=Math.abs(m);return sg+String(Math.floor(a/60)).padStart(2,'0')+':'+String(a%60).padStart(2,'0');};
+const nr=m=>((m%1440)+1440)%1440;
+const dur=(s,e,nd)=>{if(s===null||e===null)return null;let d=e-s;if(nd||d<0)d+=1440;return d;};
+const sid=s=>{const n=parseInt(s);return n<=2?0:Math.min(n-2,8);};
+const gt73=(r,s)=>{for(const[a,b,v]of T73)if(r>=a&&r<=b)return v[sid(s)];return T73N[sid(s)];};
+const gt74=s=>{const n=parseInt(s);return n<=2?T74[0]:n===3?T74[1]:n===4?T74[2]:n===5?T74[3]:T74[4];};
+const pcc=p=>p>=100?'#dc2626':p>=90?'#d97706':p>=80?'#ea580c':'#16a34a';
+const $id=id=>document.getElementById(id);
+const tx=(id,v)=>{const e=$id(id);if(e)e.textContent=v;};
+const ht=(id,v)=>{const e=$id(id);if(e)e.innerHTML=v;};
+let aFTh=0,aDh=0;
+
+function setR(g,el,hid,val){
+  document.querySelectorAll('#'+g+' .rb').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');$id(hid).value=val;
+  if(g==='gCrew')$id('augSection').style.display=(val==='3'||val==='4')?'block':'none';
+  autoCalc();
+}
+
+function calculate(){
+  const crew=parseInt($id('crewCount').value),rc=parseInt($id('restClass').value);
+  const ls=$id('longSec').value,secs=parseInt($id('sectors').value);
+  const accl=$id('acclimState').value,away=$id('awayBase').value;
+  const tz4=$id('tzBig').value,nd=$id('nightDuty').value,nday=$id('nextDay').checked;
+  const PRE=60,POST=30;
+  const sOB=t2m($id('schedOB').value),aOB=t2m($id('actOB').value);
+  const sONB=t2m($id('schedONB').value),aONB=t2m($id('actONB').value);
+  const sRN=sOB!==null?nr(sOB-PRE):null,aRN=aOB!==null?nr(aOB-PRE):null;
+  const sFT=dur(sOB,sONB,nday),aFT=dur(aOB,aONB,nday);
+  const sFDP=sFT!==null?sFT+PRE:null,aFDP=aFT!==null?aFT+PRE:null;
+  const sDuty=sFDP!==null?sFDP+POST:null,aDuty=aFDP!==null?aFDP+POST:null;
+  aFTh=aFT?aFT/60:(sFT?sFT/60:0);aDh=aDuty?aDuty/60:(sDuty?sDuty/60:0);
+  let delay=null;
+  if(sOB!==null&&aOB!==null){delay=aOB-sOB;if(delay<-720)delay+=1440;if(delay>720)delay-=1440;}
+  const aug=crew>2,addl=crew-2,secViol=aug&&secs>3;
+  const lsB=(ls==='1'&&secs<=2)?60:0;
+  let maxFDP=null,tbl='',dRule='';
+  if(aug&&!secViol){maxFDP=T76[rc][addl-1]+lsB;tbl=`TABLE 7-6 (Aug. Class ${rc}, +${addl} crew${lsB?' +1hr bonus':''})`;
+  }else if(aug&&secViol){maxFDP=accl==='A'?(sRN!==null?gt73(sRN,secs):T73N[sid(secs)]):gt74(secs);tbl='⚠ SECTOR VIOLATION — using basic table';
+  }else if(accl==='A'){
+    if(delay!==null&&delay>=240){const bS=sRN!==null?gt73(sRN,secs):null,bA=aRN!==null?gt73(aRN,secs):null;if(bS!==null&&bA!==null){maxFDP=Math.min(bS,bA);dRule=`≥4 hr delay: min(${hm(bS)},${hm(bA)})=${hm(maxFDP)}`;}else{maxFDP=bA||bS;}tbl='TABLE 7-3 (delay ≥4 hr rule)';}
+    else{maxFDP=sRN!==null?gt73(sRN,secs):null;tbl=sRN!==null?`TABLE 7-3 (report ${hm(sRN)})`:'TABLE 7-3';if(delay!==null&&delay>0&&delay<240)dRule=`<4 hr delay: max from sched report (${hm(sRN)})`;}
+  }else{maxFDP=gt74(secs);tbl='TABLE 7-4 (Unknown)';}
+  const discBase=accl==='A'?(sRN!==null?gt73(sRN,secs):null):gt74(secs);
+  const discExt=aug?3*60:2*60,discMax=discBase!==null?discBase+discExt:null;
+  const pDuty=aDuty||sDuty;
+  let minRest,rBasis;
+  if(aug||(tz4==='Y'&&away==='Y')){minRest=pDuty!==null?Math.max(pDuty,14*60):14*60;rBasis=aug?'Augmented: max(duty, 14:00)':'Away+TZ≥4: max(duty, 14:00)';}
+  else if(away==='Y'){minRest=pDuty!==null?Math.max(pDuty,10*60):10*60;rBasis='Away: max(duty, 10:00) incl 8hr sleep';}
+  else{minRest=pDuty!==null?Math.max(pDuty,12*60):12*60;rBasis='Home: max(duty, 12:00)';}
+  const nextRep=aONB!==null?nr(aONB+POST+minRest+PRE):null;
+  const fdpFP=aFDP||sFDP;
+  let pct=0,oSt='unk',bsV='ENTER TIMES',bsD='Input times',gC='s-unk',gT='AWAITING INPUT';
+  if(fdpFP!==null&&maxFDP!==null){
+    pct=Math.round((fdpFP/maxFDP)*100);
+    if(fdpFP>maxFDP){oSt='ngo';bsV='EXCEEDED';gC='s-ngo';gT='NO-GO — FDP EXCEEDED';bsD=`FDP ${hm(fdpFP)} exceeds max ${hm(maxFDP)} by ${hm(fdpFP-maxFDP)}`;}
+    else if(fdpFP>maxFDP*.9){oSt='ctn';bsV='CAUTION';gC='s-ctn';gT='CAUTION — APPROACHING LIMIT';bsD=`${hm(maxFDP-fdpFP)} headroom — ${pct}%`;}
+    else{oSt='go';bsV='COMPLIANT';gC='s-go';gT='GO — WITHIN LIMITS';bsD=`FDP ${hm(fdpFP)} / max ${hm(maxFDP)} — ${pct}%, ${hm(maxFDP-fdpFP)} headroom`;}
+  }
+  tx('r_sFDP',hm(sFDP));tx('r_aFDP',hm(aFDP));tx('r_maxFDP',hm(maxFDP));
+  const hEl=$id('r_head');if(hEl){const h=fdpFP!==null&&maxFDP!==null?maxFDP-fdpFP:null;hEl.textContent=hm(h);hEl.className='rv '+(h!==null?h<0?'ov':h<90?'wn':'ok':'');}
+  tx('r_tbl',tbl||'—');
+  const bar=$id('fdpBar');if(bar){bar.style.width=Math.min(pct,100)+'%';bar.style.background=pcc(pct);}
+  tx('fdpPct',pct+'% used');
+  tx('r_sFT',hm(sFT));tx('r_aFT',hm(aFT));
+  tx('r_rep',aRN!==null?hm(aRN):(sRN!==null?hm(sRN)+' (sched)':'--:--'));
+  tx('r_duty',hm(aDuty||sDuty));
+  const dEl=$id('r_delay');if(dEl){if(delay!==null){dEl.textContent=(delay>=0?'+':'')+hm(delay);dEl.className='rv '+(delay>0?'wn':delay<0?'ok':'');}else{dEl.textContent='—';dEl.className='rv';}}
+  tx('r_dRule',dRule||(delay===null?'—':'No delay impact'));
+  const bs=$id('bigStatus');if(bs){const colors={go:['#dcfce7','#86efac'],ctn:['#fefce8','#fde047'],ngo:['#fee2e2','#fca5a5'],unk:['#f8fafc','#d1dbe8']};const[bg,bd]=colors[oSt]||colors.unk;bs.style.background=bg;bs.style.border='1px solid '+bd;}
+  const bvEl=$id('bsVal');if(bvEl){bvEl.textContent=bsV;bvEl.style.color=oSt==='go'?'#16a34a':oSt==='ctn'?'#d97706':oSt==='ngo'?'#dc2626':'#1e3a5f';}
+  tx('bsDet',bsD);
+  const gp=$id('gsPill');if(gp){gp.className='spill '+gC;gp.textContent=gT;}
+  tx('gsInfo',bsD);
+  let wH='';
+  if(secViol)wH+=`<div class="al al-no">✖ SECTOR VIOLATION: T76 requires ≤ 3 sectors.</div>`;
+  if(nd==='Y'&&secs>4)wH+=`<div class="al al-no">✖ NIGHT DUTY: Max 4 sectors.</div>`;
+  if(nd==='Y'&&(aFDP||sFDP||0)>600)wH+=`<div class="al al-w">⚠ LONG NIGHT DUTY (&gt; 10:00).</div>`;
+  if(delay!==null&&delay>=240)wH+=`<div class="al al-w">⚠ DELAY ≥ 4 HRS: More-limiting rule applied.</div>`;
+  else if(delay!==null&&delay>0)wH+=`<div class="al al-i">ℹ DELAY &lt; 4 HRS: Max FDP from original report.</div>`;
+  ht('opWarns',wH);
+  tx('r_rest',hm(minRest));tx('r_restBasis',rBasis);
+  tx('r_sleep',away==='Y'?'08:00 (mandatory)':'N/A (home base)');
+  tx('r_nextRep',nextRep!==null?hm(nextRep)+' (ref. local)':'--:--');
+  tx('r_discBase',discBase!==null?hm(discBase):'--:--');
+  tx('r_discExt',aug?'+03:00 (aug)':'+02:00');
+  tx('r_discMax',discMax!==null?hm(discMax):'--:--');
+  hlT73(sRN,secs);checkCum();
+}
+
+function autoCalc(){if($id('schedOB').value)calculate();}
+
+function buildT73(){
+  const tb=$id('t73b');if(!tb)return;
+  tb.innerHTML=T73D.map((r,i)=>`<tr data-i="${i}"><td class="rl">${r[0]}</td>${r[1].map((v,c)=>`<td data-c="${c}">${hm(v)}</td>`).join('')}</tr>`).join('');
+}
+
+function hlT73(rep,secs){
+  const tb=$id('t73b');if(!tb||rep===null)return;
+  tb.querySelectorAll('td.hl').forEach(t=>t.classList.remove('hl'));
+  const si=sid(secs);
+  const bands=[[360,809],[810,839],[840,869],[870,899],[900,929],[930,959],[960,989],[990,1019],null,[300,314],[315,329],[330,344],[345,359]];
+  let ri=8;
+  for(let i=0;i<bands.length;i++){if(!bands[i])continue;const[a,b]=bands[i];if(rep>=a&&rep<=b){ri=i;break;}}
+  if(rep>=1020||rep<300)ri=8;
+  const rows=tb.querySelectorAll('tr');
+  if(rows[ri]){rows[ri].querySelectorAll('td')[0].classList.add('hl');const cs=rows[ri].querySelectorAll('td');if(cs[si+1])cs[si+1].classList.add('hl');}
+}
+
+function checkCum(){
+  const pR=(id,cur,lim)=>{const e=$id(id);if(!e)return 0;const p=Math.round(cur/lim*100);e.textContent=p+'%';e.style.color=pcc(p);return p;};
+  const c28v=(parseFloat($id('c28').value)||0)+aFTh,cCYv=(parseFloat($id('cCY').value)||0)+aFTh,c12v=(parseFloat($id('c12').value)||0)+aFTh;
+  const d7v=parseFloat($id('d7').value)||0,d14v=parseFloat($id('d14').value)||0,d28v=parseFloat($id('d28').value)||0;
+  pR('p28',c28v,100);pR('pCY',cCYv,900);pR('p12',c12v,1000);
+  pR('p7',d7v,60);pR('p14',d14v,110);pR('p28d',d28v,190);
+  const cs=[{l:'28-day flight',c:c28v,m:100},{l:'Calendar year',c:cCYv,m:900},{l:'12-month',c:c12v,m:1000},{l:'7-day duty',c:d7v,m:60},{l:'14-day duty',c:d14v,m:110},{l:'28-day duty',c:d28v,m:190}];
+  let h='';cs.forEach(c=>{const p=Math.round(c.c/c.m*100);if(p>=100)h+=`<div class="al al-no">✖ ${c.l}: ${c.c.toFixed(1)}/${c.m} — EXCEEDED</div>`;else if(p>=90)h+=`<div class="al al-w">⚠ ${c.l}: ${c.c.toFixed(1)}/${c.m} (${p}%)</div>`;});
+  if(!h)h='<div class="al al-ok">✔ All cumulative limits OK</div>';
+  ht('cumAlerts',h);
+}
+
+// Auto-populate from NOTAM analysis
+function autoPopulateDuty(d){
+  if(!d)return;
+  const z=v=>String(v).padStart(2,'0');
+  function setField(id,val){const el=$id(id);if(!el||!val)return;el.value=val;el.style.background='#dcfce7';el.style.borderColor='#86efac';}
+  if(d.std){try{const dt=new Date(d.std);setField('schedOB',`${z(dt.getUTCHours())}:${z(dt.getUTCMinutes())}`);}catch{}}
+  if(d.sta){try{const dt=new Date(d.sta);setField('schedONB',`${z(dt.getUTCHours())}:${z(dt.getUTCMinutes())}`);if(d.std){const dep=new Date(d.std),arr=new Date(d.sta);if(arr.getUTCDate()!==dep.getUTCDate())$id('nextDay').checked=true;}}catch{}}
+  const hint=$id('ftlAutoHint');if(hint)hint.style.display='inline';
+  $id('dutyAutoNote').classList.add('show');
+  const badge=$id('dutyBadge');if(badge){badge.textContent='AUTO';badge.classList.add('populated');}
+  if($id('schedOB')?.value)autoCalc();
+}
+
+// Init FTL on load
+window.addEventListener('load',()=>{buildT73();checkCum();});
+
+</script>
+</body>
+</html>
