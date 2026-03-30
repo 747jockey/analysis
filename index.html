@@ -59,7 +59,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 .view.active{display:flex;flex-direction:column}
 #dutyView{overflow-y:auto}
 #perfView{overflow-y:auto;background:var(--bg)}
-#fuelView{overflow-y:auto;background:var(--bg)}
 #uploadView{align-items:center;justify-content:flex-start;overflow-y:auto;padding:32px 24px}
 
 /* UPLOAD */
@@ -415,7 +414,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
   <div class="subnav-tab active" id="snNotam" onclick="switchPage('notam')">✈ &nbsp;NOTAM Brief</div>
   <div class="subnav-tab" id="snDuty" onclick="switchPage('duty')">⏱ &nbsp;Duty Planner <span class="subnav-badge" id="dutyBadge">EASA</span></div>
   <div class="subnav-tab" id="snPerf" onclick="switchPage('perf')">⚡ &nbsp;Performance <span class="subnav-badge" id="perfBadge">W&amp;P</span></div>
-  <div class="subnav-tab" id="snFuel" onclick="switchPage('fuel')">📊 &nbsp;FL/Fuel <span class="subnav-badge" id="fuelBadge">WIND</span></div>
 </nav>
 
 <!-- UPLOAD VIEW -->
@@ -474,7 +472,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
         <div class="upload-zone compact" id="dzWIND" onclick="document.getElementById('fiWIND').click()">
           <span class="uz-icon">🌬️</span>
           <div class="uz-label">Wind / Cross Section</div>
-          <div class="uz-hint">Vertical cross section chart<br>Optional — for FL/Fuel analysis</div>
+          <div class="uz-hint">Vertical cross section chart<br>Optional — for MORA corrections</div>
           <div class="uz-filename" id="fnWIND"></div>
           <span class="uz-clear" id="clrWIND" onclick="clearFileN(event,'WIND')">✕</span>
         </div>
@@ -570,19 +568,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 
 
 
-<!-- ═══ FL/FUEL VIEW ═══ -->
-<div class="view" id="fuelView">
-  <div style="max-width:960px;margin:0 auto;padding:20px 24px">
-    <div id="fuelContainer">
-      <div class="perf-empty">
-        <div class="perf-empty-icon">📊</div>
-        <div class="perf-empty-title">No wind chart loaded</div>
-        <div class="perf-empty-sub">Upload a vertical cross section PDF on the NOTAM Brief tab — wind analysis will appear here.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ═══ ONE AIR FTL CALCULATOR VIEW ═══ -->
 <div class="view" id="dutyView">
   <div class="auto-populated-note" id="dutyAutoNote"><span>✓</span><span>Times pre-filled from flight analysis — <strong>STD → Off Block · STA → On Block</strong>. All fields remain editable.</span></div>
@@ -621,14 +606,20 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
       </div>
       <div class="card">
         <div class="ct">Flight Times</div>
-        <div class="tip" style="margin-bottom:9px;">FDP = off-block − 60 min (report) → on-block. <span id="ftlAutoHint" style="color:#16a34a;font-weight:600;display:none">✓ Auto-filled from flight plan.</span></div>
+        <div class="tip" style="margin-bottom:9px;">All times UTC. FDP begins 60 min before off-blocks (report time). <span id="ftlAutoHint" style="color:#16a34a;font-weight:600;display:none">✓ Auto-filled from flight plan.</span></div>
         <div class="th"><div></div><div class="tc">SCHEDULED</div><div class="tc">ACTUAL</div></div>
         <div class="tr"><div class="trl">Off Block</div><input type="time" id="schedOB" oninput="autoCalc()"><input type="time" id="actOB" oninput="autoCalc()"></div>
+        <div class="tr"><div class="trl">Airborne</div><input type="time" id="schedAIR" oninput="autoCalc()"><input type="time" id="actAIR" oninput="autoCalc()"></div>
         <div class="tr"><div class="trl">Landing</div><input type="time" id="schedLDG" oninput="autoCalc()"><input type="time" id="actLDG" oninput="autoCalc()"></div>
         <div class="tr"><div class="trl">On Block</div><input type="time" id="schedONB" oninput="autoCalc()"><input type="time" id="actONB" oninput="autoCalc()"></div>
         <div style="margin-top:9px;display:flex;gap:8px;align-items:center;">
           <input type="checkbox" id="nextDay" oninput="autoCalc()" style="width:16px;height:16px;">
           <label for="nextDay" style="text-transform:none;letter-spacing:0;font-size:11px;cursor:pointer;font-weight:500;color:#475569;">On-block is next calendar day</label>
+        </div>
+        <div id="fdpAssumption" style="display:none;margin-top:10px;padding:8px 10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:5px;font-size:10px;color:#0369a1;line-height:1.5">
+          <strong>Assumptions:</strong> FDP = flight plan time (<span id="fpFlightTime">—</span>) + 60 min report + 10 min taxi to stand.<br>
+          Duty period = flight plan time + 60 min report + 30 min post-duty.<br>
+          All times may be manually adjusted.
         </div>
       </div>
       <div class="card">
@@ -871,9 +862,8 @@ function switchPage(page){
   document.getElementById('snNotam').classList.toggle('active',page==='notam');
   document.getElementById('snDuty').classList.toggle('active',page==='duty');
   document.getElementById('snPerf').classList.toggle('active',page==='perf');
-  document.getElementById('snFuel').classList.toggle('active',page==='fuel');
   const NOTAM_VIEWS=['uploadView','procView','errView','resultsView'];
-  var extraViews=['dutyView','perfView','fuelView'];
+  var extraViews=['dutyView','perfView'];
   if(page==='duty'){
     NOTAM_VIEWS.forEach(v=>document.getElementById(v).classList.remove('active'));
     extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
@@ -884,10 +874,6 @@ function switchPage(page){
     extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
     document.getElementById('perfView').classList.add('active');
     if(perfData) renderPerf();
-  } else if(page==='fuel'){
-    NOTAM_VIEWS.forEach(v=>document.getElementById(v).classList.remove('active'));
-    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
-    document.getElementById('fuelView').classList.add('active');
   } else {
     extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
     const last=sessionStorage.getItem('lastNotamView')||'uploadView';
@@ -897,7 +883,7 @@ function switchPage(page){
 
 // ══ DUAL UPLOAD ZONES ══
 let fileOFP=null, fileNOTAM=null, fileWIND=null, fileCOMBI=null;
-var windText=null; // stored wind chart text for FL/Fuel analysis
+var windText=null; // stored wind chart text
 function setupZone(name){
   const dz=document.getElementById('dz'+name), fi=document.getElementById('fi'+name);
   if(!dz||!fi)return;
@@ -908,7 +894,21 @@ function setupZone(name){
 }
 setupZone('OFP'); setupZone('NOTAM'); setupZone('WIND'); setupZone('COMBI');
 
+function resetAnalysisData(){
+  flightData=null;perfData=null;perfRampAdj=null;navLogData=null;windText=null;rawTextForAge=null;
+  window._uasWeight=null;window._uasPressAlt=null;
+  window._moraSurfTemp=null;window._moraQNH=null;window._moraWindKt=null;
+  if(leafletMap){leafletMap.remove();leafletMap=null;}markers=[];
+  // Reset manual inputs
+  var rampInp=document.getElementById('perfRampInput');if(rampInp)rampInp.value='';
+  // Clear result views
+  var pc=document.getElementById('perfContainer');if(pc)pc.innerHTML='';
+  ['perfBadge','dutyBadge'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('populated');});
+  var ob=document.getElementById('offlineBadge');if(ob)ob.style.display='none';
+  console.log('[RESET] All analysis data cleared');
+}
 function setFileN(file,name){
+  resetAnalysisData(); // Clear all previous analysis on any new file upload
   if(name==='COMBI'){
     fileCOMBI=file;
     fileOFP=null;fileNOTAM=null;fileWIND=null;
@@ -1329,7 +1329,7 @@ async function startAnalysis(){
       if(sections.windText.length>100){
         windText=sections.windText;
         console.log('[NOTAM] Wind section detected: '+windText.length+' chars');
-        var fb=document.getElementById('fuelBadge');if(fb){fb.textContent='LOADED';fb.classList.add('populated');}
+        
       }
       if(!notamText||notamText.length<50){
         throw new Error('Could not detect NOTAM section in the combined document. Try uploading OFP and NOTAMs as separate files.');
@@ -1350,7 +1350,7 @@ async function startAnalysis(){
         console.log('[NOTAM] Extracting wind chart...');
         windText=await extractText(fileWIND);
         console.log('[NOTAM] Wind chart: '+windText.length+' chars');
-        var fb=document.getElementById('fuelBadge');if(fb){fb.textContent='LOADED';fb.classList.add('populated');}
+        
       }
     }
 
@@ -1460,104 +1460,82 @@ function geocodeFallbacks(d){
 // Format: waypoint line has name + BO(KGS), coordinate line has MORA after lat/lon
 var navLogData=null; // {highestMora:{waypoint,mora,boKg,lat,lon}, tocBoKg, waypoints[]}
 function parseNavLog(text){
-  // ── STEP 1: Normalize pdf.js text ──
-  // pdf.js produces one line per page. We need to split waypoint/coord pairs.
-  var norm=text;
+  // ── CHUNK-BASED PARSER ──
+  // Instead of splitting into lines (which fails with pdf.js single-line-per-page),
+  // we find ALL coordinate patterns and extract data from the text between them.
 
-  // Insert \n before every coordinate: N52:49.9 or S43:07.5
-  norm=norm.replace(/\s([NS]\d{2}:\d{2}\.\d)/g,'\n$1');
-
-  // Insert \n before waypoint names: WPTNAME followed by FIR code (4 upper letters)
-  // Pattern: space + 2-6 uppercase/digits + space(s) + 4 uppercase letters + space
-  norm=norm.replace(/\s([A-Z][A-Z0-9]{1,5})\s+([A-Z]{4})\s/g,'\n$1 $2 ');
-
-  // Insert \n before -TOC- -SC- -TD- markers
-  norm=norm.replace(/\s(-TOC-|-SC-|-TD-)\s/g,'\n$1 ');
-
-  var lines=norm.split('\n').map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
-
-  // ── STEP 2: Filter out non-waypoint lines ──
-  lines=lines.filter(function(l){
-    if(l.match(/^FMS\s+IDENT/i)) return false;    // page footer
-    if(l.match(/^WAYPOINT\s+FIR/i)) return false;  // column header
-    if(l.match(/^CO-ORD/i)) return false;           // column header
-    if(l.match(/^RVSM/i)) return false;             // RVSM check line
-    if(l.match(/PPS\s+\d/)) return false;           // page footer
-    return true;
-  });
-
-  // ── STEP 3: Parse waypoint + coordinate pairs ──
-  var coordRe=/^([NS]\d{2}:\d{2}\.\d)\s+([EW]\d{2,3}:\d{2}\.\d)\s+(.*)/;
-  var wptRe=/^([A-Z][A-Z0-9]{1,5})\s+([A-Z]{4})\s/;
-  var tocRe=/^(-TOC-|-SC-|-TD-)\s/;
+  var coordPattern=/([NS]\d{2}:\d{2}\.\d)\s+([EW]\d{2,3}:\d{2}\.\d)/g;
+  var coords=[];
+  var m;
+  while((m=coordPattern.exec(text))!==null){
+    coords.push({idx:m.index, lat:m[1], lon:m[2], afterIdx:m.index+m[0].length});
+  }
+  console.log('[MORA] Found '+coords.length+' coordinate patterns in text');
 
   var waypoints=[];
   var tocBoKg=null;
 
-  for(var i=0;i<lines.length;i++){
-    var cm=lines[i].match(coordRe);
-    if(!cm) continue;
+  for(var i=0;i<coords.length;i++){
+    var c=coords[i];
 
     // Parse lat/lon
-    var latM=cm[1].match(/([NS])(\d{2}):(\d{2}\.\d)/);
-    var lonM=cm[2].match(/([EW])(\d{2,3}):(\d{2}\.\d)/);
+    var latM=c.lat.match(/([NS])(\d{2}):(\d{2}\.\d)/);
+    var lonM=c.lon.match(/([EW])(\d{2,3}):(\d{2}\.\d)/);
     var lat=0,lon=0;
     if(latM){lat=parseInt(latM[2])+parseFloat(latM[3])/60;if(latM[1]==='S')lat=-lat;}
     if(lonM){lon=parseInt(lonM[2])+parseFloat(lonM[3])/60;if(lonM[1]==='W')lon=-lon;}
 
-    // Extract MORA: the first number in the remainder after coords
-    var rest=cm[3].trim();
-    var moraParts=rest.split(/\s+/);
-    var mora=0;
-    if(moraParts.length>0){
-      var mv=parseInt(moraParts[0]);
-      if(!isNaN(mv)&&mv>=0&&mv<=999) mora=mv;
-    }
+    // ── MORA: text immediately after coordinates ──
+    var afterText=text.substring(c.afterIdx,c.afterIdx+80);
+    var moraM=afterText.match(/^\s+(\d{1,3})\s/);
+    var mora=moraM?parseInt(moraM[1]):0;
 
-    // Look backwards for the waypoint name line (should be i-1)
-    var wptName='';
+    // ── WAYPOINT NAME + BO: text BEFORE this coordinate, after previous coordinate ──
+    var chunkStart=i>0?coords[i-1].afterIdx:0;
+    var chunk=text.substring(chunkStart,c.idx);
+
+    // Find the LAST waypoint name in the chunk (closest to this coordinate)
+    var allNames=[...chunk.matchAll(/([A-Z][A-Z0-9]{1,5})\s+([A-Z]{4})\s/g)];
+    var tocNames=[...chunk.matchAll(/(-TOC-|-SC-|-TD-)\s/g)];
+    allNames=allNames.concat(tocNames);
+
+    if(allNames.length===0) continue;
+    var nameM=allNames[allNames.length-1]; // LAST match = closest to coordinate
+    var wptName=nameM[1];
+
+    // ── BO(KGS): last 4-6 digit number between name and coordinates ──
+    var afterNameStart=chunk.indexOf(nameM[0])+nameM[0].length;
+    var afterName=chunk.substring(afterNameStart);
     var boKg=null;
-    for(var j=i-1;j>=Math.max(0,i-5);j--){
-      var wm=lines[j].match(wptRe);
-      if(!wm) wm=lines[j].match(tocRe);
-      if(wm){
-        wptName=wm[1];
-        // BO(KGS) is the last large number on the waypoint line
-        var nums=lines[j].match(/\d+/g);
-        if(nums){
-          for(var k=nums.length-1;k>=0;k--){
-            var n=parseInt(nums[k]);
-            if(n>500 && n<200000){boKg=n;break;}
-          }
-        }
-        break;
+    var allNums=afterName.match(/\b(\d{4,6})\b/g);
+    if(allNums){
+      for(var k=allNums.length-1;k>=0;k--){
+        var n=parseInt(allNums[k]);
+        if(n>=1000&&n<200000){boKg=n;break;}
       }
     }
 
-    if(!wptName) continue;
-
     // TOC burn-off
-    if(wptName==='-TOC-' && boKg!=null) tocBoKg=boKg;
+    if(wptName==='-TOC-'&&boKg!=null) tocBoKg=boKg;
 
     waypoints.push({name:wptName, mora:mora, boKg:boKg, lat:lat, lon:lon});
   }
 
-  // ── STEP 4: Find highest MORA ──
+  // ── Find highest MORA ──
   var best=null;
   waypoints.forEach(function(w){
-    if(w.mora>0 && (!best || w.mora>best.mora)) best=w;
+    if(w.mora>0&&(!best||w.mora>best.mora)) best=w;
   });
 
   var result={
-    highestMora: best?{waypoint:best.name, mora:best.mora, boKg:best.boKg, lat:best.lat, lon:best.lon}:null,
-    tocBoKg: tocBoKg,
-    waypoints: waypoints  // store all for debugging
+    highestMora:best?{waypoint:best.name,mora:best.mora,boKg:best.boKg,lat:best.lat,lon:best.lon}:null,
+    tocBoKg:tocBoKg,
+    waypoints:waypoints
   };
 
   // ── Diagnostic log ──
   console.log('[MORA] Total waypoints parsed: '+waypoints.length);
   if(waypoints.length>0){
-    // Log top 5 MORA values for verification
     var sorted=waypoints.slice().filter(function(w){return w.mora>0;}).sort(function(a,b){return b.mora-a.mora;});
     console.log('[MORA] Top 5 MORA values:');
     sorted.slice(0,5).forEach(function(w){
@@ -2404,6 +2382,119 @@ function renderPerf(){
         }
       }
     }
+
+    // ══ CORRECTED MORA CALCULATION ══
+    if(moraVal&&moraVal>=2000){
+      // Find nearest airport within 150nm of MORA waypoint for QNH
+      var nearAP150=null;
+      if(moraLat||moraLon){
+        var bestDist150=999;
+        (flightData.alternates||[]).forEach(function(alt){
+          var aLat=alt.lat,aLon=alt.lon;
+          if(!aLat&&!aLon&&ICAO_COORDS[alt.icao]){aLat=ICAO_COORDS[alt.icao][0];aLon=ICAO_COORDS[alt.icao][1];}
+          if(!aLat&&!aLon)return;
+          var dist=haversineDist(moraLat,moraLon,aLat,aLon);
+          if(dist<=150&&dist<bestDist150){bestDist150=dist;nearAP150={icao:alt.icao,name:alt.name||'',dist:Math.round(dist)};}
+        });
+      }
+
+      var surfTemp=window._moraSurfTemp;
+      var manQNH=window._moraQNH;
+      var windKt=window._moraWindKt;
+
+      // ISA calculation
+      var isaT=isaTemp(moraVal);
+      var isaDeviation=surfTemp!=null?surfTemp-isaT:null;
+      var tempCorr=isaDeviation!=null?mfaTempCorrection(moraVal,isaDeviation):null;
+
+      // QNH correction
+      var qnhCorr=null;
+      var qnhNote='';
+      if(nearAP150&&manQNH!=null){
+        qnhCorr=qnhCorrection(manQNH);
+        qnhNote=nearAP150.icao+' ('+nearAP150.dist+' nm) · QNH '+manQNH+' hPa';
+      } else if(!nearAP150){
+        // No airport within 150nm — add 1000ft or 2000ft
+        qnhCorr=moraVal>5000?2000:1000;
+        qnhNote='No airport within 150nm — +'+(moraVal>5000?'2,000':'1,000')+' ft (standard)';
+      }
+
+      // Wind correction
+      var windCorr=windKt!=null?mfaWindCorrection(moraVal,windKt):null;
+
+      // Total corrected MORA
+      var correctedMORA=moraVal+(tempCorr||0)+(qnhCorr||0)+(windCorr||0);
+      var allEntered=surfTemp!=null&&(nearAP150?manQNH!=null:true)&&windKt!=null;
+
+      h+=`<div style="padding:14px 20px;border-top:2px solid var(--amber-border);background:#fffbeb">
+        <div style="font-size:10px;font-weight:700;color:#92400e;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Corrected MORA Calculation</div>`;
+
+      // Manual input fields
+      h+=`<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;padding:10px;background:#fff;border:1px solid #fde68a;border-radius:6px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Surface Temp (°C)</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" id="moraTempInput" value="${surfTemp!=null?surfTemp:''}" placeholder="from cross-section" style="font-family:var(--mono);font-size:13px;width:80px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:4px;text-align:right" onkeydown="if(event.key==='Enter')moraUpdate()" />
+            <span style="font-size:10px;color:var(--text3)">°C</span>
+          </div>
+          <span style="font-size:9px;color:var(--text3)">Read from vertical cross section at highest terrain</span>
+        </div>`;
+
+      if(nearAP150){
+        h+=`<div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">QNH (hPa) · ${esc(nearAP150.icao)} ${nearAP150.dist}nm</label>
+          <input type="number" id="moraQnhInput" value="${manQNH!=null?manQNH:''}" placeholder="e.g. 1013" style="font-family:var(--mono);font-size:13px;width:80px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:4px;text-align:right" onkeydown="if(event.key==='Enter')moraUpdate()" />
+        </div>`;
+      } else {
+        h+=`<div style="display:flex;flex-direction:column;gap:3px"><label style="font-size:10px;font-weight:600;color:var(--text3)">QNH</label>
+          <span style="font-size:11px;color:#92400e;font-weight:600">No airport within 150nm</span>
+          <input type="hidden" id="moraQnhInput" value="" /></div>`;
+      }
+
+      h+=`<div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Wind Speed (kt)</label>
+          <input type="number" id="moraWindInput" value="${windKt!=null?windKt:''}" placeholder="kt" style="font-family:var(--mono);font-size:13px;width:70px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:4px;text-align:right" onkeydown="if(event.key==='Enter')moraUpdate()" />
+        </div>
+        <button onclick="moraUpdate()" style="padding:6px 14px;border-radius:4px;border:none;background:#92400e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;height:32px">Calculate</button>
+      </div>`;
+
+      // Breakdown table
+      h+=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr style="border-bottom:1px solid #fde68a"><td style="padding:7px 0;color:var(--text2)">Raw MORA (flight plan)</td>
+          <td style="padding:7px 0;text-align:right;font-family:var(--mono);font-weight:700">${fmtN(moraVal)} ft</td></tr>`;
+
+      // Temperature row
+      if(surfTemp!=null){
+        var isaLabel='ISA at '+fmtN(moraVal)+' ft = '+isaT.toFixed(0)+'°C · Actual = '+surfTemp+'°C · Dev = '+(isaDeviation>=0?'+':'')+isaDeviation.toFixed(0)+'°C';
+        var tempLabel=tempCorr>0?'MFA +'+(tempCorr>moraVal*0.2?'25%':tempCorr>moraVal*0.1?'20%':'10%'):'No correction (warmer than ISA-16)';
+        h+=`<tr style="border-bottom:1px solid #fde68a"><td style="padding:7px 0;color:var(--text2)">Temperature correction<br><span style="font-size:9px;color:var(--text3)">${isaLabel}<br>${tempLabel}</span></td>
+          <td style="padding:7px 0;text-align:right;font-family:var(--mono);font-weight:700;color:${tempCorr>0?'var(--red)':'var(--green)'}">${tempCorr>0?'+'+fmtN(tempCorr)+' ft':'0 ft'}</td></tr>`;
+      } else {
+        h+=`<tr style="border-bottom:1px solid #fde68a"><td style="padding:7px 0;color:var(--text3)">Temperature correction</td>
+          <td style="padding:7px 0;text-align:right;font-size:11px;color:var(--text3)">Enter surface temp</td></tr>`;
+      }
+
+      // QNH row
+      h+=`<tr style="border-bottom:1px solid #fde68a"><td style="padding:7px 0;color:var(--text2)">QNH correction<br><span style="font-size:9px;color:var(--text3)">${qnhNote||'Enter QNH'}</span></td>
+        <td style="padding:7px 0;text-align:right;font-family:var(--mono);font-weight:700;color:${qnhCorr!=null&&qnhCorr>0?'var(--red)':qnhCorr!=null&&qnhCorr<0?'var(--green)':'var(--text3)'}">${qnhCorr!=null?(qnhCorr>=0?'+':'')+fmtN(qnhCorr)+' ft':'—'}</td></tr>`;
+
+      // Wind row
+      if(windKt!=null){
+        var windLabel=moraVal>8000?'Terrain >8000 ft':'Terrain 2000-8000 ft';
+        h+=`<tr style="border-bottom:1px solid #fde68a"><td style="padding:7px 0;color:var(--text2)">Wind correction<br><span style="font-size:9px;color:var(--text3)">${windKt} kt · ${windLabel}</span></td>
+          <td style="padding:7px 0;text-align:right;font-family:var(--mono);font-weight:700;color:${windCorr>0?'var(--red)':'var(--green)'}">${windCorr>0?'+'+fmtN(windCorr)+' ft':'0 ft'}</td></tr>`;
+      } else {
+        h+=`<tr style="border-bottom:1px solid #fde68a"><td style="padding:7px 0;color:var(--text3)">Wind correction</td>
+          <td style="padding:7px 0;text-align:right;font-size:11px;color:var(--text3)">Enter wind speed</td></tr>`;
+      }
+
+      // Total row
+      h+=`<tr><td style="padding:10px 0;font-weight:700;color:#92400e;font-size:13px">CORRECTED MORA</td>
+        <td style="padding:10px 0;text-align:right;font-family:var(--mono);font-size:20px;font-weight:800;color:${allEntered?'#92400e':'var(--text3)'}">${allEntered?fmtN(correctedMORA)+' ft':'—'}</td></tr>`;
+
+      h+=`</table></div>`;
+    }
+
     h+=`</div>`;
   }
 
@@ -2449,7 +2540,219 @@ function renderPerf(){
     h+=`</div>`;
   }
 
+  // ══ MINIMUM FLIGHT WEIGHT ANALYSIS ══
+  var minFW=getMinFlightWeight(d.registration);
+  var ldwBelowMin=pldw!=null&&pldw<=minFW;
+  var altResFuel=(d.altFuel||0)+(d.fresFuel||0);
+  var ldwMinusAltRes=pldw!=null?pldw-altResFuel:null;
+  var divBelowMin=ldwMinusAltRes!=null&&ldwMinusAltRes<=minFW;
+
+  h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:14px 20px;background:${(ldwBelowMin||divBelowMin)?'var(--red-bg)':'var(--green-bg)'};border-bottom:1.5px solid ${(ldwBelowMin||divBelowMin)?'var(--red-border)':'var(--green-border)'}">
+    <div style="font-size:10px;font-weight:700;color:${(ldwBelowMin||divBelowMin)?'var(--red)':'var(--green)'};letter-spacing:1px;text-transform:uppercase">Minimum Flight Weight Analysis</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:3px">${esc(d.registration||'')} min flight weight: ${fmtW(minFW)}</div></div>`;
+  h+=`<div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--border)">
+    <span style="font-size:12px">PLDW at destination</span>
+    <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:${ldwBelowMin?'var(--red)':'var(--text)'}">${fmtW(pldw)} ${ldwBelowMin?'⚠ BELOW MIN':'✓'}</span></div>`;
+  h+=`<div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--border)">
+    <span style="font-size:12px">PLDW − Alt fuel − Final reserve</span>
+    <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:${divBelowMin?'var(--red)':'var(--text)'}">${fmtW(ldwMinusAltRes)} ${divBelowMin?'⚠ BELOW MIN':'✓'}</span></div>`;
+  if(ldwBelowMin||divBelowMin){
+    h+=`<div style="padding:10px 20px;background:var(--red-bg);font-size:12px;font-weight:700;color:var(--red)">⚠ WEIGHT BELOW MINIMUM FLIGHT WEIGHT — Review fuel planning</div>`;
+  }
+  h+=`</div>`;
+
+  // ══ UNRELIABLE AIRSPEED — manual weight + pressure altitude ══
+  var uasWt=window._uasWeight||(d.maxLdw||302092);
+  var uasPressAlt=window._uasPressAlt||0;
+  var termTable=eng==='CF6'?TERM_CF6:TERM_PW4;
+  var apprTable=eng==='CF6'?APPR_CF6:APPR_PW4;
+  var gaTable=eng==='CF6'?GA_CF6:GA_PW4;
+  var thrustLabel=eng==='CF6'?'%N1':'EPR';
+  var isUasManual=window._uasWeight!=null||window._uasPressAlt!=null;
+
+  h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:14px 20px;background:#fef3c7;border-bottom:1.5px solid #fbbf24">
+    <div style="font-size:10px;font-weight:700;color:#92400e;letter-spacing:1px;text-transform:uppercase">Unreliable Airspeed — ${engName}${isUasManual?' · MANUAL':'  · Max LDW'}</div>
+    <div style="font-size:11px;color:#78350f;margin-top:2px">Pitch attitude and thrust settings for unreliable airspeed recovery</div></div>`;
+
+  // Manual inputs
+  h+=`<div style="padding:12px 20px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;border-bottom:1.5px solid var(--border);background:var(--surface)">
+    <div style="display:flex;align-items:center;gap:5px">
+      <label style="font-size:11px;font-weight:600;color:var(--text2)">Weight:</label>
+      <input type="number" id="uasWeightInput" value="${uasWt}" style="font-family:var(--mono);font-size:13px;width:100px;padding:4px 8px;border:1.5px solid var(--border2);border-radius:4px;outline:none;text-align:right" onkeydown="if(event.key==='Enter')uasUpdate()" />
+      <span style="font-size:11px;color:var(--text3)">kg</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <label style="font-size:11px;font-weight:600;color:var(--text2)">Press Alt:</label>
+      <input type="number" id="uasPressAltInput" value="${uasPressAlt}" step="1000" style="font-family:var(--mono);font-size:13px;width:80px;padding:4px 8px;border:1.5px solid var(--border2);border-radius:4px;outline:none;text-align:right" onkeydown="if(event.key==='Enter')uasUpdate()" />
+      <span style="font-size:11px;color:var(--text3)">ft</span>
+    </div>
+    <button onclick="uasUpdate()" style="padding:5px 12px;border-radius:4px;border:none;background:var(--navy);color:#fff;font-size:11px;font-weight:600;cursor:pointer">Update</button>
+    ${isUasManual?'<button onclick="uasReset()" style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer">Reset</button>':''}
+    <span style="font-size:10px;color:var(--text3)">Default: MLW ${fmtW(d.maxLdw||0)}</span></div>`;
+
+  // Terminal Area (5000ft)
+  h+=`<div style="padding:10px 20px;background:var(--surface);font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.5px;border-bottom:1px solid var(--border)">TERMINAL AREA (5000 FT) — Level Flight</div>`;
+  h+=`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:left;font-size:10px">FLAP</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">GEAR</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">PITCH</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">${thrustLabel}</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">KIAS</th></tr></thead><tbody>`;
+  [{name:'UP',key:'flapUp',gear:'UP'},{name:'1',key:'flap1',gear:'UP'},{name:'5',key:'flap5',gear:'UP'},{name:'10',key:'flap10',gear:'UP'},{name:'20',key:'flap20',gear:'DOWN'}].forEach(function(cfg){
+    var t=termTable[cfg.key];var pitch=interpUAS(t,uasWt,1);var thrust=interpUAS(t,uasWt,2);var kias=Math.round(interpUAS(t,uasWt,3));
+    h+=`<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600">${cfg.name}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center">${cfg.gear}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700">${pitch}°</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700">${thrust}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--blue)">${kias}</td></tr>`;
+  });
+  h+=`</tbody></table>`;
+
+  // Final Approach (1500ft)
+  h+=`<div style="padding:10px 20px;background:var(--surface);font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.5px;border-bottom:1px solid var(--border);border-top:2px solid var(--border)">FINAL APPROACH (1500 FT) — 3° Glideslope, Gear Down</div>`;
+  h+=`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:left;font-size:10px">FLAP</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">PITCH</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">${thrustLabel}</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">KIAS</th></tr></thead><tbody>`;
+  [{name:'25',key:'flap25'},{name:'30',key:'flap30'}].forEach(function(cfg){
+    var t=apprTable[cfg.key];
+    if(!t||uasWt/1000>t[t.length-1][0]){
+      h+=`<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600">${cfg.name}</td>
+        <td colspan="3" style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;color:var(--text3)">* Exceeds flap placard speed</td></tr>`;
+      return;
+    }
+    var pitch=interpUAS(t,uasWt,1);var thrust=interpUAS(t,uasWt,2);var kias=Math.round(interpUAS(t,uasWt,3));
+    h+=`<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600">${cfg.name}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700">${pitch}°</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700">${thrust}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--blue)">${kias}</td></tr>`;
+  });
+  h+=`</tbody></table>`;
+
+  // Go-Around (1500ft) — pitch, VS, KIAS at pressure altitudes
+  h+=`<div style="padding:10px 20px;background:var(--surface);font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.5px;border-bottom:1px solid var(--border);border-top:2px solid var(--border)">GO-AROUND (1500 FT) — Flaps 20, Gear Up, Go-Around Thrust${uasPressAlt?' · Press Alt: '+fmtN(uasPressAlt)+' ft':''}</div>`;
+  h+=`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:left;font-size:10px">ALTITUDE</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">PITCH</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">VS (FPM)</th>
+    <th style="background:var(--navy);color:#e0f2fe;padding:8px;text-align:center;font-size:10px">KIAS</th></tr></thead><tbody>`;
+  // Determine which row to highlight based on pressure altitude
+  var gaRows=[{name:'10,000 ft',key:'alt10000',alt:10000},{name:'5,000 ft',key:'alt5000',alt:5000},{name:'Sea Level',key:'altSL',alt:0}];
+  var closestGA=0;
+  if(uasPressAlt>0){
+    var bestDiff=99999;
+    gaRows.forEach(function(r,idx){var diff=Math.abs(r.alt-uasPressAlt);if(diff<bestDiff){bestDiff=diff;closestGA=idx;}});
+  } else {closestGA=2;} // default sea level
+  gaRows.forEach(function(cfg,idx){
+    var t=gaTable[cfg.key];var pitch=interpUAS(t,uasWt,1);var vs=Math.round(interpUAS(t,uasWt,2));var kias=Math.round(interpUAS(t,uasWt,3));
+    var hl=idx===closestGA;
+    h+=`<tr style="${hl?'background:#fef3c7;':''}"><td style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:${hl?'700':'600'}">${cfg.name}${hl?' ◀':''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;${hl?'font-size:15px;color:#92400e':'font-size:12px'}">${pitch}°</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);${hl?'font-weight:700':''}">${vs}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--blue);${hl?'font-size:15px':''}">${kias}</td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+
   c.innerHTML=h;
+}
+
+// ══ UNRELIABLE AIRSPEED TABLES (from Boeing 747 FCOM) ══
+// Terminal Area (5000ft) — [weight_1000kg, pitchAtt, n1_or_epr, kias]
+// CF6 uses %N1, PW4 uses EPR (with alt mode %N1 in parentheses)
+const TERM_CF6={
+  flapUp:  [[200,5.0,56.3,208],[250,5.5,62.1,224],[300,5.5,67.4,239],[350,6.0,71.8,253],[400,6.5,75.9,266],[410,6.5,76.6,269]],
+  flap1:   [[200,6.5,58.4,188],[250,7.0,64.2,204],[300,7.0,69.3,219],[350,7.5,74.0,233],[400,7.5,77.6,246],[410,7.5,78.4,249]],
+  flap5:   [[200,7.5,61.5,168],[250,7.5,67.8,184],[300,8.0,73.0,199],[350,8.0,77.6,213],[400,8.0,81.6,226],[410,8.0,82.3,229]],
+  flap10:  [[200,8.5,61.3,148],[250,8.5,67.6,164],[300,8.5,73.1,179],[350,9.0,77.7,193],[400,9.0,81.6,206],[410,9.0,82.4,209]],
+  flap20:  [[200,7.5,73.0,138],[250,7.5,79.6,154],[300,7.5,86.0,169],[350,7.5,90.0,183],[400,7.5,94.2,196],[410,7.5,95.0,199]]
+};
+const TERM_PW4={
+  flapUp:  [[200,5.0,1.01,208],[250,5.5,1.03,224],[300,5.5,1.04,239],[350,6.0,1.06,253],[400,6.5,1.07,266],[410,6.5,1.08,269]],
+  flap1:   [[200,6.5,1.03,188],[250,7.0,1.05,204],[300,7.0,1.06,219],[350,7.5,1.08,233],[400,7.5,1.10,246],[410,7.5,1.10,249]],
+  flap5:   [[200,7.5,1.06,168],[250,7.5,1.08,184],[300,8.0,1.10,199],[350,8.0,1.12,213],[400,8.0,1.15,226],[410,8.0,1.15,229]],
+  flap10:  [[200,8.5,1.07,148],[250,8.5,1.09,164],[300,8.5,1.11,179],[350,9.0,1.14,193],[400,9.0,1.16,206],[410,9.0,1.17,209]],
+  flap20:  [[200,7.5,1.10,138],[250,7.5,1.13,154],[300,7.5,1.17,169],[350,7.5,1.21,183],[400,7.5,1.25,196],[410,7.5,1.26,199]]
+};
+// Approach (1500ft) — Flaps 25 and 30
+const APPR_CF6={
+  flap25: [[200,2.0,53.3,143],[250,2.0,58.9,159],[300,2.0,63.8,175],[350,2.0,68.2,189],[400,2.0,72.0,203],[410,2.0,72.7,205]],
+  flap30: [[200,0.5,59.1,138],[250,1.0,65.2,154],[300,1.0,70.3,168]]
+};
+const APPR_PW4={
+  flap25: [[200,2.0,1.05,143],[250,2.0,1.06,159],[300,2.0,1.07,175],[350,2.0,1.08,189],[400,2.0,1.10,203],[410,2.0,1.10,205]],
+  flap30: [[200,0.5,1.07,138],[250,1.0,1.09,154],[300,1.0,1.11,168]]
+};
+// Go-Around (1500ft, Flaps 20, Gear Up) — [weight, pitchAtt, vs, kias] at different altitudes
+const GA_CF6={
+  alt10000: [[200,18.5,3900,149],[250,15.0,3000,165],[300,12.5,2400,181],[350,11.0,1900,195],[400,9.5,1400,208],[410,9.5,1400,211]],
+  alt5000:  [[200,21.5,3500,148],[250,17.5,3500,164],[300,14.5,2800,179],[350,12.5,2300,193],[400,11.0,1800,206],[410,11.0,1700,209]],
+  altSL:    [[200,24.0,4700,147],[250,19.0,3800,163],[300,16.0,3000,178],[350,14.0,2500,191],[400,12.0,2000,204],[410,12.0,2000,207]]
+};
+const GA_PW4={
+  alt10000: [[200,18.5,3900,149],[250,15.0,3000,165],[300,12.5,2400,181],[350,11.0,1800,195],[400,9.5,1400,208],[410,9.0,1300,211]],
+  alt5000:  [[200,21.5,3400,148],[250,17.0,3400,164],[300,14.5,2800,179],[350,12.5,2200,193],[400,11.0,1800,206],[410,10.5,1700,209]],
+  altSL:    [[200,24.5,4800,147],[250,19.5,3800,163],[300,16.0,3100,178],[350,14.0,2600,191],[400,12.5,2100,204],[410,12.0,2000,207]]
+};
+
+function interpUAS(table,wKg,col){
+  var w=wKg/1000;
+  for(var i=0;i<table.length-1;i++){
+    var w1=table[i][0],w2=table[i+1][0];
+    if(w>=w1&&w<=w2){var f=(w-w1)/(w2-w1);var v=table[i][col]+f*(table[i+1][col]-table[i][col]);return col===2&&table[0][col]>10?Math.round(v*100)/100:Math.round(v*10)/10;}
+  }
+  if(w<table[0][0])return col===2&&table[0][col]>10?Math.round(table[0][col]*100)/100:Math.round(table[0][col]*10)/10;
+  return col===2&&table[0][col]>10?Math.round(table[table.length-1][col]*100)/100:Math.round(table[table.length-1][col]*10)/10;
+}
+
+// Minimum flight weights
+function getMinFlightWeight(reg){return(reg||'').replace(/[-\s]/g,'').toUpperCase()==='GONEF'?165169:171186;}
+
+// ══ MORA CORRECTION FUNCTIONS ══
+// ISA temperature at altitude: 15°C - 2°C per 1000ft, max to FL360
+function isaTemp(altFt){return 15-2*(Math.min(altFt,36000)/1000);}
+
+// MFA Temperature Correction (Table 1-14)
+// Input: ISA deviation (actual - ISA). Negative means colder than ISA.
+// Returns correction in feet (percentage of MFA)
+function mfaTempCorrection(moraFt,isaDeviation){
+  // Only applies when temp is COLDER than ISA (ISA -16 or colder)
+  if(isaDeviation>=-15) return 0; // warmer than ISA-16, no correction
+  var pct=0;
+  if(isaDeviation>=-30) pct=0.10; // ISA-16 to ISA-30
+  else if(isaDeviation>=-50) pct=0.20; // ISA-31 to ISA-50
+  else pct=0.25; // ISA-51 or below
+  return Math.round(moraFt*pct);
+}
+
+// MFA Wind Correction (Table 1-13)
+// Input: terrain elevation in ft, wind speed in knots
+// Returns correction in feet
+function mfaWindCorrection(terrainFt,windKt){
+  if(terrainFt<2000) return 0;
+  var high=terrainFt>8000; // above 8000ft
+  if(windKt<=30) return high?1000:500;
+  if(windKt<=50) return high?1500:1000;
+  if(windKt<=70) return high?2000:1500;
+  return high?2500:2000; // 70+
+}
+
+// QNH correction: (1013 - actualQNH) * 30 ft
+function qnhCorrection(actualQNH){return Math.round((1013-actualQNH)*30);}
+
+// State for corrected MORA manual inputs
+window._moraSurfTemp=null; // manual surface temp entry
+window._moraQNH=null; // manual QNH entry
+window._moraWindKt=null; // manual wind speed entry
+
+function moraUpdate(){
+  var tInp=document.getElementById('moraTempInput');
+  var qInp=document.getElementById('moraQnhInput');
+  var wInp=document.getElementById('moraWindInput');
+  if(tInp){var v=parseFloat(tInp.value);if(!isNaN(v))window._moraSurfTemp=v;}
+  if(qInp){var v=parseFloat(qInp.value);if(!isNaN(v)&&v>900&&v<1100)window._moraQNH=v;}
+  if(wInp){var v=parseInt(wInp.value);if(!isNaN(v)&&v>=0)window._moraWindKt=v;}
+  renderPerf();
 }
 
 function perfSetRamp(){
@@ -2458,6 +2761,15 @@ function perfSetRamp(){
   if(!isNaN(v)&&v>0){perfRampAdj=v;renderPerf();}
 }
 function perfResetRamp(){perfRampAdj=null;renderPerf();}
+
+function uasUpdate(){
+  var wInp=document.getElementById('uasWeightInput');
+  var aInp=document.getElementById('uasPressAltInput');
+  if(wInp){var v=parseInt(wInp.value);if(!isNaN(v)&&v>0)window._uasWeight=v;}
+  if(aInp){var a=parseInt(aInp.value);if(!isNaN(a)&&a>=0)window._uasPressAlt=a;}
+  renderPerf();
+}
+function uasReset(){window._uasWeight=null;window._uasPressAlt=null;renderPerf();}
 
 // ══ UTILS ══
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -2520,13 +2832,28 @@ function calculate(){
   const ls=$id('longSec').value,secs=parseInt($id('sectors').value);
   const accl=$id('acclimState').value,away=$id('awayBase').value;
   const tz4=$id('tzBig').value,nd=$id('nightDuty').value,nday=$id('nextDay').checked;
-  const PRE=60,POST=30;
+  const PRE=60,POST_DUTY=30,TAXI_IN=10;
   const sOB=t2m($id('schedOB').value),aOB=t2m($id('actOB').value);
   const sONB=t2m($id('schedONB').value),aONB=t2m($id('actONB').value);
+  const sLDG=t2m($id('schedLDG').value),aLDG=t2m($id('actLDG').value);
   const sRN=sOB!==null?nr(sOB-PRE):null,aRN=aOB!==null?nr(aOB-PRE):null;
-  const sFT=dur(sOB,sONB,nday),aFT=dur(aOB,aONB,nday);
-  const sFDP=sFT!==null?sFT+PRE:null,aFDP=aFT!==null?aFT+PRE:null;
-  const sDuty=sFDP!==null?sFDP+POST:null,aDuty=aFDP!==null?aFDP+POST:null;
+
+  // Flight time = off-block to landing. Fallback: off-block to on-block minus taxi
+  const sBlockTime=dur(sOB,sONB,nday),aBlockTime=dur(aOB,aONB,nday);
+  const sFlightToLDG=sLDG!==null&&sOB!==null?dur(sOB,sLDG,nday):null;
+  const aFlightToLDG=aLDG!==null&&aOB!==null?dur(aOB,aLDG,nday):null;
+  const sFlightTime=sFlightToLDG!==null?sFlightToLDG:(sBlockTime!==null?sBlockTime-TAXI_IN:null);
+  const aFlightTime=aFlightToLDG!==null?aFlightToLDG:(aBlockTime!==null?aBlockTime-TAXI_IN:null);
+
+  // FDP = flight time + 60 min report + 10 min taxi
+  const sFDP=sFlightTime!==null?sFlightTime+PRE+TAXI_IN:null;
+  const aFDP=aFlightTime!==null?aFlightTime+PRE+TAXI_IN:null;
+  // Block-to-block for display
+  const sFT=sBlockTime,aFT=aBlockTime;
+
+  // Duty = FDP + 30 min post-duty
+  const sDuty=sFDP!==null?sFDP+POST_DUTY:null;
+  const aDuty=aFDP!==null?aFDP+POST_DUTY:null;
   aFTh=aFT?aFT/60:(sFT?sFT/60:0);aDh=aDuty?aDuty/60:(sDuty?sDuty/60:0);
   let delay=null;
   if(sOB!==null&&aOB!==null){delay=aOB-sOB;if(delay<-720)delay+=1440;if(delay>720)delay-=1440;}
@@ -2546,7 +2873,7 @@ function calculate(){
   if(aug||(tz4==='Y'&&away==='Y')){minRest=pDuty!==null?Math.max(pDuty,14*60):14*60;rBasis=aug?'Augmented: max(duty, 14:00)':'Away+TZ≥4: max(duty, 14:00)';}
   else if(away==='Y'){minRest=pDuty!==null?Math.max(pDuty,10*60):10*60;rBasis='Away: max(duty, 10:00) incl 8hr sleep';}
   else{minRest=pDuty!==null?Math.max(pDuty,12*60):12*60;rBasis='Home: max(duty, 12:00)';}
-  const nextRep=aONB!==null?nr(aONB+POST+minRest+PRE):null;
+  const nextRep=aONB!==null?nr(aONB+POST_DUTY+minRest+PRE):null;
   const fdpFP=aFDP||sFDP;
   let pct=0,oSt='unk',bsV='ENTER TIMES',bsD='Input times',gC='s-unk',gT='AWAITING INPUT';
   if(fdpFP!==null&&maxFDP!==null){
@@ -2560,7 +2887,7 @@ function calculate(){
   tx('r_tbl',tbl||'—');
   const bar=$id('fdpBar');if(bar){bar.style.width=Math.min(pct,100)+'%';bar.style.background=pcc(pct);}
   tx('fdpPct',pct+'% used');
-  tx('r_sFT',hm(sFT));tx('r_aFT',hm(aFT));
+  tx('r_sFT',hm(sFlightTime!=null?sFlightTime:sFT));tx('r_aFT',hm(aFlightTime!=null?aFlightTime:aFT));
   tx('r_rep',aRN!==null?hm(aRN):(sRN!==null?hm(sRN)+' (sched)':'--:--'));
   tx('r_duty',hm(aDuty||sDuty));
   const dEl=$id('r_delay');if(dEl){if(delay!==null){dEl.textContent=(delay>=0?'+':'')+hm(delay);dEl.className='rv '+(delay>0?'wn':delay<0?'ok':'');}else{dEl.textContent='—';dEl.className='rv';}}
@@ -2620,14 +2947,61 @@ function checkCum(){
 // Auto-populate from NOTAM analysis
 function autoPopulateDuty(d){
   if(!d)return;
-  const z=v=>String(v).padStart(2,'0');
-  function setField(id,val){const el=$id(id);if(!el||!val)return;el.value=val;el.style.background='#dcfce7';el.style.borderColor='#86efac';}
-  if(d.std){try{const dt=new Date(d.std);setField('schedOB',`${z(dt.getUTCHours())}:${z(dt.getUTCMinutes())}`);}catch{}}
-  if(d.sta){try{const dt=new Date(d.sta);setField('schedONB',`${z(dt.getUTCHours())}:${z(dt.getUTCMinutes())}`);if(d.std){const dep=new Date(d.std),arr=new Date(d.sta);if(arr.getUTCDate()!==dep.getUTCDate())$id('nextDay').checked=true;}}catch{}}
-  const hint=$id('ftlAutoHint');if(hint)hint.style.display='inline';
+  var z=function(v){return String(v).padStart(2,'0');};
+  function setField(id,val){var el=$id(id);if(!el||!val)return;el.value=val;el.style.background='#dcfce7';el.style.borderColor='#86efac';}
+
+  // Extract flight time from OFP text: TRIP XXXX  97413  12:12
+  var flightTimeMins=null;
+  if(rawTextForAge){
+    var ftm=rawTextForAge.match(/TRIP\s+[A-Z]{4}\s+\d+\s+(\d{1,2}):(\d{2})/);
+    if(ftm) flightTimeMins=parseInt(ftm[1])*60+parseInt(ftm[2]);
+  }
+
+  // Off blocks = ETD (STD) directly from flight plan
+  if(d.std){
+    try{
+      var dep=new Date(d.std);
+      setField('schedOB',z(dep.getUTCHours())+':'+z(dep.getUTCMinutes()));
+    }catch(e){}
+  }
+
+  // On blocks = ETA (STA) directly from flight plan
+  if(d.sta){
+    try{
+      var arr=new Date(d.sta);
+      setField('schedONB',z(arr.getUTCHours())+':'+z(arr.getUTCMinutes()));
+      if(d.std){
+        var depD=new Date(d.std);
+        if(arr.getUTCDate()!==depD.getUTCDate()) $id('nextDay').checked=true;
+      }
+    }catch(e){}
+  }
+
+  // Landing = ETD + flight time (if available)
+  if(d.std&&flightTimeMins!=null){
+    try{
+      var depT=new Date(d.std);
+      var ldgDate=new Date(depT.getTime()+flightTimeMins*60000);
+      setField('schedLDG',z(ldgDate.getUTCHours())+':'+z(ldgDate.getUTCMinutes()));
+    }catch(e){}
+  }
+
+  // Show assumptions
+  if(flightTimeMins!=null){
+    var ftEl=$id('fpFlightTime');
+    if(ftEl) ftEl.textContent=z(Math.floor(flightTimeMins/60))+':'+z(flightTimeMins%60);
+    var aEl=$id('fdpAssumption');if(aEl)aEl.style.display='block';
+
+    var fdpMins=flightTimeMins+60+10;
+    console.log('[FTL] Flight time: '+z(Math.floor(flightTimeMins/60))+':'+z(flightTimeMins%60)+
+      ' | FDP: '+z(Math.floor(fdpMins/60))+':'+z(fdpMins%60)+
+      ' | Duty: '+z(Math.floor((flightTimeMins+60+30)/60))+':'+z((flightTimeMins+60+30)%60));
+  }
+
+  var hint=$id('ftlAutoHint');if(hint)hint.style.display='inline';
   $id('dutyAutoNote').classList.add('show');
-  const badge=$id('dutyBadge');if(badge){badge.textContent='AUTO';badge.classList.add('populated');}
-  if($id('schedOB')?.value)autoCalc();
+  var badge=$id('dutyBadge');if(badge){badge.textContent='AUTO';badge.classList.add('populated');}
+  if($id('schedOB')&&$id('schedOB').value)autoCalc();
 }
 
 // Init FTL on load
