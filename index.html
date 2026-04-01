@@ -59,6 +59,45 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 .view.active{display:flex;flex-direction:column}
 #dutyView{overflow-y:auto}
 #perfView{overflow-y:auto;background:var(--bg)}
+#rulesView{overflow-y:auto;background:var(--bg)}
+.example-q{display:inline-block;padding:6px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:16px;font-size:11px;color:#0369a1;cursor:pointer;transition:all .15s}
+.example-q:hover{background:#e0f2fe;border-color:#7dd3fc}
+.ms-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden}
+.ms-q{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:8px}
+.ms-a{padding:14px 16px;font-size:13px;line-height:1.7;color:var(--text)}
+.ms-a p{margin:0 0 8px 0}
+.ms-src{margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text3)}
+.ms-loading{padding:16px;text-align:center;color:var(--text3);font-size:12px}
+.ms-loading .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--navy);margin:0 3px;animation:dotPulse 1.4s infinite ease-in-out both}
+.ms-loading .dot:nth-child(1){animation-delay:-0.32s}.ms-loading .dot:nth-child(2){animation-delay:-0.16s}
+@keyframes dotPulse{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+.rules-country{margin-bottom:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.rules-country-head{padding:12px 16px;background:var(--navy);color:#e0f2fe;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.rules-phase{padding:8px 16px;background:var(--surface);font-size:10px;font-weight:700;color:var(--amber);letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
+.rules-item{padding:10px 16px;border-bottom:1px solid var(--border)}
+.rules-item:last-child{border-bottom:none}
+.rules-item-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.rules-item-title{font-size:12px;font-weight:600;color:var(--text)}
+.rules-item-cat{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px}
+.rules-item-toggle{font-size:10px;color:var(--text3);transition:transform .2s}
+.rules-item-body{display:none;margin-top:8px;padding:10px 12px;background:#f8fafc;border-radius:5px;border:1px solid var(--border);font-size:11px;color:var(--text2);line-height:1.6;white-space:pre-wrap;font-family:var(--mono);max-height:400px;overflow-y:auto}
+.rules-item-body.open{display:block}
+.rules-search{display:flex;gap:8px;margin-bottom:16px}
+.rules-search input{flex:1;padding:10px 14px;border:1.5px solid var(--border2);border-radius:6px;font-size:13px;outline:none;font-family:var(--sans)}
+.rules-search input:focus{border-color:var(--navy)}
+.rules-search button{padding:10px 18px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+
+.eawm-country{margin-bottom:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.eawm-country-hdr{padding:12px 18px;background:var(--navy);color:#e0f2fe;font-size:12px;font-weight:700;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+.eawm-phase{font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700;letter-spacing:.5px}
+.eawm-phase-dep{background:#dcfce7;color:#166534}.eawm-phase-enr{background:#e0f2fe;color:#1e40af}.eawm-phase-arr{background:#fef3c7;color:#92400e}
+.eawm-topic{border-bottom:1px solid var(--border)}
+.eawm-topic-hdr{padding:10px 18px;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--bg)}
+.eawm-topic-hdr:hover{background:#f0f9ff}
+.eawm-topic-body{display:none;padding:10px 18px;font-size:11px;color:var(--text2);line-height:1.6;white-space:pre-wrap;font-family:var(--sans);background:#fafafa;border-top:1px solid var(--border)}
+.eawm-topic-body.open{display:block}
+.eawm-relevance{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
+.eawm-rel-high{background:#fee2e2;color:#991b1b}.eawm-rel-med{background:#fef3c7;color:#92400e}.eawm-rel-low{background:#f0fdf4;color:#166534}
 #uploadView{align-items:center;justify-content:flex-start;overflow-y:auto;padding:32px 24px}
 
 /* UPLOAD */
@@ -310,9 +349,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 #dutyView .s-ngo{background:var(--ftl-rbg);color:var(--ftl-red);border:1px solid var(--ftl-rbd)}
 #dutyView .s-unk{background:var(--ftl-bluel);color:var(--ftl-blue);border:1px solid #93c5fd}
 #dutyView .sinfo{font-size:12px;color:var(--ftl-t2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#dutyView .ftl-main{display:grid;grid-template-columns:330px 1fr;min-height:calc(100vh - 92px)}
-#dutyView .lp{background:var(--ftl-s0);border-right:1px solid var(--ftl-bd);padding:14px;overflow-y:auto;max-height:calc(100vh - 92px);position:sticky;top:0}
-#dutyView .rp{padding:14px;background:var(--ftl-bg)}
+#dutyView .ftl-main{min-height:calc(100vh - 92px)}
+#dutyView .lp{display:none}
+#dutyView .rp{padding:0}
 #dutyView .card{background:var(--ftl-s0);border:1px solid var(--ftl-bd);border-radius:var(--ftl-r);padding:14px;margin-bottom:12px;box-shadow:var(--ftl-sh)}
 #dutyView .ct{font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--ftl-blue);text-transform:uppercase;margin-bottom:11px;padding-bottom:8px;border-bottom:2px solid var(--ftl-bluel);display:flex;align-items:center;gap:7px}
 #dutyView .ct::before{content:'';width:3px;height:12px;background:var(--ftl-blue);border-radius:2px;flex-shrink:0}
@@ -414,6 +453,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
   <div class="subnav-tab active" id="snNotam" onclick="switchPage('notam')">✈ &nbsp;NOTAM Brief</div>
   <div class="subnav-tab" id="snDuty" onclick="switchPage('duty')">⏱ &nbsp;Duty Planner <span class="subnav-badge" id="dutyBadge">EASA</span></div>
   <div class="subnav-tab" id="snPerf" onclick="switchPage('perf')">⚡ &nbsp;Performance <span class="subnav-badge" id="perfBadge">W&amp;P</span></div>
+  <div class="subnav-tab" id="snEawm" onclick="switchPage('eawm')">📘 &nbsp;Manual Search <span class="subnav-badge" id="eawmBadge">AI</span></div>
 </nav>
 
 <!-- UPLOAD VIEW -->
@@ -568,146 +608,276 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 
 
 
+<!-- ═══ MANUAL SEARCH VIEW ═══ -->
+<div class="view" id="rulesView">
+  <div style="max-width:960px;margin:0 auto;padding:20px 24px">
+    <div style="margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800;color:var(--navy)">Manual Search</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Upload your Jeppesen EAWM, company manuals or any aviation PDF. Ask any question and AI will search the documents and provide answers with page references.</div>
+    </div>
+
+    <!-- Upload zone -->
+    <div style="margin-bottom:16px">
+      <div class="upload-zone compact" id="dzManuals" onclick="document.getElementById('fiManuals').click()" style="border-color:var(--navy);min-height:70px">
+        <span class="uz-icon">📘</span>
+        <div class="uz-label">Upload Manuals (PDF)</div>
+        <div class="uz-hint">Select one or more PDF files — EAWM, OMA, SOP, FCOM etc.</div>
+        <div class="uz-filename" id="fnManuals"></div>
+        <span class="uz-clear" id="clrManuals" onclick="clearManuals(event)" style="display:none">✕</span>
+      </div>
+      <input type="file" id="fiManuals" accept="application/pdf" multiple style="display:none"/>
+    </div>
+
+    <!-- Search box -->
+    <div style="display:flex;gap:8px;margin-bottom:6px">
+      <input type="text" id="manualSearchInput" placeholder="e.g. What is the driftdown procedure for Belgium?" style="flex:1;padding:12px 16px;border:2px solid var(--navy);border-radius:8px;font-size:14px;outline:none;font-family:var(--sans)" onkeydown="if(event.key==='Enter')searchManuals()" />
+      <button onclick="searchManuals()" id="manualSearchBtn" style="padding:12px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap">🔍 Search</button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:16px">Ask in plain English. The AI reads your uploaded manuals and finds the answer with page references.</div>
+
+    <!-- Search history -->
+    <div id="manualSearchHistory"></div>
+
+    <!-- Empty state -->
+    <div id="manualEmpty">
+      <div class="perf-empty" style="margin-top:20px">
+        <div class="perf-empty-icon">📘</div>
+        <div class="perf-empty-title">Upload manuals to get started</div>
+        <div class="perf-empty-sub">Upload any aviation PDF — Jeppesen EAWM, company manuals, AIP extracts, FCOMs — then ask any question about the content.</div>
+      </div>
+      <div style="margin-top:16px;padding:14px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--navy);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Example Questions</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span class="example-q" onclick="setManualQ(this)">What is the driftdown procedure for Belgium?</span>
+          <span class="example-q" onclick="setManualQ(this)">Altimeter setting procedures for Kazakhstan</span>
+          <span class="example-q" onclick="setManualQ(this)">SLOP procedures over China</span>
+          <span class="example-q" onclick="setManualQ(this)">Emergency communication failure procedures</span>
+          <span class="example-q" onclick="setManualQ(this)">Fuel jettison rules over France</span>
+          <span class="example-q" onclick="setManualQ(this)">RVSM requirements for overflying Russia</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ ONE AIR FTL CALCULATOR VIEW ═══ -->
 <div class="view" id="dutyView">
-  <div class="auto-populated-note" id="dutyAutoNote"><span>✓</span><span>Times pre-filled from flight analysis — <strong>STD → Off Block · STA → On Block</strong>. All fields remain editable.</span></div>
+  <div class="auto-populated-note" id="dutyAutoNote"><span>✓</span><span>Times pre-filled from flight plan — all fields editable.</span></div>
   <div class="sbanner">
     <div id="gsPill" class="spill s-unk">AWAITING INPUT</div>
     <div class="sinfo" id="gsInfo">Enter crew details and flight times to calculate FTL compliance</div>
   </div>
-  <div class="ftl-main">
-    <!-- LEFT PANEL -->
-    <div class="lp">
-      <div class="card">
-        <div class="ct">Crew Composition</div>
-        <div class="fl"><label>Number of Flight Crew</label>
-          <div class="rrow-r" id="gCrew">
-            <div class="rb on" onclick="setR('gCrew',this,'crewCount','2')">2 CREW<br><small style="font-size:9px;opacity:.7">BASIC</small></div>
-            <div class="rb"    onclick="setR('gCrew',this,'crewCount','3')">3 CREW<br><small style="font-size:9px;opacity:.7">+1 AUG</small></div>
-            <div class="rb"    onclick="setR('gCrew',this,'crewCount','4')">4 CREW<br><small style="font-size:9px;opacity:.7">+2 AUG</small></div>
-          </div>
-          <input type="hidden" id="crewCount" value="2">
-        </div>
-        <div id="augSection" style="display:none;">
-          <div class="fl"><label>In-Flight Rest Facility Class</label>
-            <div class="rrow-r" id="gRest">
-              <div class="rb"    onclick="setR('gRest',this,'restClass','1')">CLASS 1</div>
-              <div class="rb on" onclick="setR('gRest',this,'restClass','2')">CLASS 2</div>
-              <div class="rb"    onclick="setR('gRest',this,'restClass','3')">CLASS 3</div>
-            </div><input type="hidden" id="restClass" value="2">
-          </div>
-          <div class="fl"><label>Any sector &gt; 9 hrs continuous?</label>
-            <div class="rrow-r" id="gLS">
-              <div class="rb"    onclick="setR('gLS',this,'longSec','1')">YES (+1 HR)</div>
-              <div class="rb on" onclick="setR('gLS',this,'longSec','0')">NO</div>
-            </div><input type="hidden" id="longSec" value="0">
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="ct">Flight Times</div>
-        <div class="tip" style="margin-bottom:9px;">All times UTC. FDP begins 60 min before off-blocks (report time). <span id="ftlAutoHint" style="color:#16a34a;font-weight:600;display:none">✓ Auto-filled from flight plan.</span></div>
-        <div class="th"><div></div><div class="tc">SCHEDULED</div><div class="tc">ACTUAL</div></div>
-        <div class="tr"><div class="trl">Off Block</div><input type="time" id="schedOB" oninput="autoCalc()"><input type="time" id="actOB" oninput="autoCalc()"></div>
-        <div class="tr"><div class="trl">Airborne</div><input type="time" id="schedAIR" oninput="autoCalc()"><input type="time" id="actAIR" oninput="autoCalc()"></div>
-        <div class="tr"><div class="trl">Landing</div><input type="time" id="schedLDG" oninput="autoCalc()"><input type="time" id="actLDG" oninput="autoCalc()"></div>
-        <div class="tr"><div class="trl">On Block</div><input type="time" id="schedONB" oninput="autoCalc()"><input type="time" id="actONB" oninput="autoCalc()"></div>
-        <div style="margin-top:9px;display:flex;gap:8px;align-items:center;">
-          <input type="checkbox" id="nextDay" oninput="autoCalc()" style="width:16px;height:16px;">
-          <label for="nextDay" style="text-transform:none;letter-spacing:0;font-size:11px;cursor:pointer;font-weight:500;color:#475569;">On-block is next calendar day</label>
-        </div>
-        <div id="fdpAssumption" style="display:none;margin-top:10px;padding:8px 10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:5px;font-size:10px;color:#0369a1;line-height:1.5">
-          <strong>Assumptions:</strong> FDP = flight plan time (<span id="fpFlightTime">—</span>) + 60 min report + 10 min taxi to stand.<br>
-          Duty period = flight plan time + 60 min report + 30 min post-duty.<br>
-          All times may be manually adjusted.
-        </div>
-      </div>
-      <div class="card">
-        <div class="ct">Operational Parameters</div>
-        <div class="fl"><label>Number of Sectors This FDP</label>
-          <select id="sectors" oninput="autoCalc()"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8+</option></select>
-        </div>
-        <div class="fl"><label>Acclimatisation State</label>
-          <div class="rrow-r" id="gAcclim">
-            <div class="rb on" onclick="setR('gAcclim',this,'acclimState','A')">ACCLIMATISED</div>
-            <div class="rb"    onclick="setR('gAcclim',this,'acclimState','U')">UNKNOWN</div>
-          </div><input type="hidden" id="acclimState" value="A">
-        </div>
-        <div class="fl"><label>Night Duty? (encroaches 02:00–04:59)</label>
-          <div class="rrow-r" id="gNight">
-            <div class="rb"    onclick="setR('gNight',this,'nightDuty','Y')">YES</div>
-            <div class="rb on" onclick="setR('gNight',this,'nightDuty','N')">NO</div>
-          </div><input type="hidden" id="nightDuty" value="N">
-        </div>
-        <div class="fl"><label>Away from Home Base?</label>
-          <div class="rrow-r" id="gAway">
-            <div class="rb on" onclick="setR('gAway',this,'awayBase','Y')">YES</div>
-            <div class="rb"    onclick="setR('gAway',this,'awayBase','N')">NO</div>
-          </div><input type="hidden" id="awayBase" value="Y">
-        </div>
-        <div class="fl"><label>Time Zone Difference ≥ 4 hrs?</label>
-          <div class="rrow-r" id="gTZ">
-            <div class="rb"    onclick="setR('gTZ',this,'tzBig','Y')">YES</div>
-            <div class="rb on" onclick="setR('gTZ',this,'tzBig','N')">NO</div>
-          </div><input type="hidden" id="tzBig" value="N">
-        </div>
-      </div>
-      <button class="calcbtn" onclick="calculate()">⟳  CALCULATE FTL COMPLIANCE</button>
+  <div style="max-width:900px;margin:0 auto;padding:16px 20px;overflow-y:auto;max-height:calc(100vh - 92px)">
+
+    <!-- STATUS CARD -->
+    <div id="bigStatus" class="bst" style="background:#f8fafc;border:1px solid #d1dbe8;margin-bottom:16px">
+      <div class="bsl" style="color:#475569">Overall FTL Status</div>
+      <div class="bsv" id="bsVal" style="color:#1e293b">ENTER TIMES</div>
+      <div class="bsd" id="bsDet">Input scheduled and actual block times to calculate compliance</div>
     </div>
-    <!-- RIGHT PANEL -->
-    <div class="rp">
-      <div class="g2">
-        <div class="card">
-          <div class="ct">Flight Duty Period (FDP)</div>
-          <div class="rrow"><div class="rl">Scheduled FDP</div><div class="rv" id="r_sFDP">--:--</div></div>
-          <div class="rrow"><div class="rl">Actual FDP</div><div class="rv" id="r_aFDP">--:--</div></div>
-          <div class="rrow"><div class="rl">Max Permitted</div><div class="rv" id="r_maxFDP">--:--</div></div>
-          <div class="rrow"><div class="rl">Headroom</div><div class="rv" id="r_head">--:--</div></div>
-          <div class="rrow"><div class="rl">Table Applied</div><div class="rsm" id="r_tbl">—</div></div>
-          <div class="pbw"><div class="pbt"><div class="pbf" id="fdpBar" style="width:0%;background:#16a34a"></div></div><div class="pbl"><span>0%</span><span style="opacity:.5">80%</span><span>100%</span></div></div>
-          <div style="text-align:right;font-family:var(--mono);font-size:10px;color:#94a3b8;margin-top:2px;" id="fdpPct">—</div>
+
+    <!-- CREW & OPERATIONS — right below status -->
+    <details class="card" style="margin-bottom:14px" open>
+      <summary style="cursor:pointer;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--ftl-blue);text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:7px;border-bottom:2px solid var(--ftl-bluel)"><span style="width:3px;height:12px;background:var(--ftl-blue);border-radius:2px"></span>Crew &amp; Operations<span style="margin-left:auto;font-size:11px;opacity:.5">▼</span></summary>
+      <div style="padding:12px 14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div class="fl"><label>Flight Crew</label>
+              <div class="rrow-r" id="gCrew">
+                <div class="rb on" onclick="setR('gCrew',this,'crewCount','2')">2<br><small style="font-size:8px;opacity:.6">BASIC</small></div>
+                <div class="rb" onclick="setR('gCrew',this,'crewCount','3')">3<br><small style="font-size:8px;opacity:.6">+1 AUG</small></div>
+                <div class="rb" onclick="setR('gCrew',this,'crewCount','4')">4<br><small style="font-size:8px;opacity:.6">+2 AUG</small></div>
+              </div><input type="hidden" id="crewCount" value="2">
+            </div>
+            <div id="augSection" style="display:none;">
+              <div class="fl"><label>Rest Facility Class</label>
+                <div class="rrow-r" id="gRest">
+                  <div class="rb" onclick="setR('gRest',this,'restClass','1')">1</div>
+                  <div class="rb on" onclick="setR('gRest',this,'restClass','2')">2</div>
+                  <div class="rb" onclick="setR('gRest',this,'restClass','3')">3</div>
+                </div><input type="hidden" id="restClass" value="2">
+              </div>
+              <div class="fl"><label>Sector &gt; 9 hrs?</label>
+                <div class="rrow-r" id="gLS">
+                  <div class="rb" onclick="setR('gLS',this,'longSec','1')">YES</div>
+                  <div class="rb on" onclick="setR('gLS',this,'longSec','0')">NO</div>
+                </div><input type="hidden" id="longSec" value="0">
+              </div>
+            </div>
+            <div class="fl"><label>Sectors This FDP</label>
+              <select id="sectors" oninput="autoCalc()"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8+</option></select>
+            </div>
+          </div>
+          <div>
+            <div class="fl"><label>Acclimatisation</label>
+              <div class="rrow-r" id="gAcclim">
+                <div class="rb on" onclick="setR('gAcclim',this,'acclimState','A')">ACCLIM</div>
+                <div class="rb" onclick="setR('gAcclim',this,'acclimState','U')">UNKNOWN</div>
+              </div><input type="hidden" id="acclimState" value="A">
+            </div>
+            <div class="fl"><label>Night Duty? (02:00–04:59)</label>
+              <div class="rrow-r" id="gNight">
+                <div class="rb" onclick="setR('gNight',this,'nightDuty','Y')">YES</div>
+                <div class="rb on" onclick="setR('gNight',this,'nightDuty','N')">NO</div>
+              </div><input type="hidden" id="nightDuty" value="N">
+            </div>
+            <div class="fl"><label>Away from Home Base?</label>
+              <div class="rrow-r" id="gAway">
+                <div class="rb on" onclick="setR('gAway',this,'awayBase','Y')">YES</div>
+                <div class="rb" onclick="setR('gAway',this,'awayBase','N')">NO</div>
+              </div><input type="hidden" id="awayBase" value="Y">
+            </div>
+            <div class="fl"><label>TZ Difference ≥ 4 hrs?</label>
+              <div class="rrow-r" id="gTZ">
+                <div class="rb" onclick="setR('gTZ',this,'tzBig','Y')">YES</div>
+                <div class="rb on" onclick="setR('gTZ',this,'tzBig','N')">NO</div>
+              </div><input type="hidden" id="tzBig" value="N">
+            </div>
+          </div>
         </div>
-        <div class="card">
-          <div class="ct">Times &amp; Delay</div>
-          <div class="rrow"><div class="rl">Sched. Flight Time</div><div class="rv" id="r_sFT">--:--</div></div>
-          <div class="rrow"><div class="rl">Actual Flight Time</div><div class="rv" id="r_aFT">--:--</div></div>
-          <div class="rrow"><div class="rl">Report Time</div><div class="rv" id="r_rep">--:--</div></div>
-          <div class="rrow"><div class="rl">Actual Duty Period</div><div class="rv" id="r_duty">--:--</div></div>
-          <div class="rrow"><div class="rl">Departure Delay</div><div class="rv" id="r_delay">—</div></div>
-          <div class="rrow"><div class="rl">Delay Rule</div><div class="rsm" id="r_dRule">—</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px">
+          <div class="card" style="border:1px solid var(--ftl-abd);background:var(--ftl-abg)">
+            <div style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--ftl-amb);letter-spacing:.1em">COMMANDER'S DISCRETION</div>
+            <div style="padding:4px 10px 8px"><div class="rrow"><div class="rl">Base Max</div><div class="rv" id="r_discBase">--:--</div></div>
+            <div class="rrow"><div class="rl">Extension</div><div class="rv" id="r_discExt">—</div></div>
+            <div class="rrow"><div class="rl">Absolute Max</div><div class="rv" id="r_discMax" style="color:#ea580c">--:--</div></div></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center">
+            <button class="calcbtn" onclick="calculate()" style="width:100%">⟳  RECALCULATE</button>
+          </div>
         </div>
       </div>
-      <div id="bigStatus" class="bst" style="background:#f8fafc;border:1px solid #d1dbe8;">
-        <div class="bsl" style="color:#475569">Overall FTL Status</div>
-        <div class="bsv" id="bsVal" style="color:#1e293b">ENTER TIMES</div>
-        <div class="bsd" id="bsDet">Input scheduled and actual block times to calculate compliance</div>
-      </div>
-      <div id="opWarns"></div>
-      <div class="g2">
-        <div class="card">
-          <div class="ct">Minimum Rest Required</div>
-          <div class="rrow"><div class="rl">After This FDP</div><div class="rv" id="r_rest">--:--</div></div>
-          <div class="rrow"><div class="rl">Basis</div><div class="rsm" id="r_restBasis">—</div></div>
-          <div class="rrow"><div class="rl">Sleep Opportunity</div><div class="rv" id="r_sleep">—</div></div>
-          <div class="rrow"><div class="rl">Earliest Next Report</div><div class="rv" id="r_nextRep">--:--</div></div>
-        </div>
-        <div class="card">
-          <div class="ct">Commander's Discretion</div>
-          <div class="al al-i" style="margin-bottom:9px;font-size:10px;">Discretion base is the <strong>basic T73/T74 value</strong>, not T76.</div>
-          <div class="rrow"><div class="rl">Basic Max (Base)</div><div class="rv" id="r_discBase">--:--</div></div>
-          <div class="rrow"><div class="rl">Max Extension</div><div class="rv" id="r_discExt">—</div></div>
-          <div class="rrow"><div class="rl">Absolute Max w/ Disc.</div><div class="rv" id="r_discMax" style="color:#ea580c">--:--</div></div>
-        </div>
-      </div>
-      <div class="sep"></div>
+    </details>
+
+    <!-- TWO-COLUMN: TIMES + FDP RESULT -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <!-- FLIGHT TIMES -->
       <div class="card">
-        <div class="ct">Table 7-3 — Max Daily FDP (Acclimatised)</div>
-        <div style="overflow-x:auto;"><table class="ft" id="t73"><thead><tr><th>Report Time</th><th>1–2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead><tbody id="t73b"></tbody></table></div>
+        <div class="ct">Flight Times (UTC)</div>
+        <div class="th"><div></div><div class="tc">SCHEDULED</div><div class="tc">ACTUAL</div></div>
+        <div class="tr"><div class="trl">Off Block</div><input type="text" id="schedOB" placeholder="HH:MM" maxlength="5" pattern="\d{2}:\d{2}" oninput="autoCalc()"><input type="text" id="actOB" placeholder="HH:MM" maxlength="5" oninput="autoCalc()"></div>
+        <div class="tr"><div class="trl">Airborne</div><input type="text" id="schedAIR" placeholder="HH:MM" maxlength="5" oninput="autoCalc()"><input type="text" id="actAIR" placeholder="HH:MM" maxlength="5" oninput="autoCalc()"></div>
+        <div class="tr"><div class="trl">Landing</div><input type="text" id="schedLDG" placeholder="HH:MM" maxlength="5" oninput="autoCalc()"><input type="text" id="actLDG" placeholder="HH:MM" maxlength="5" oninput="autoCalc()"></div>
+        <div class="tr"><div class="trl">On Block</div><input type="text" id="schedONB" placeholder="HH:MM" maxlength="5" oninput="autoCalc()"><input type="text" id="actONB" placeholder="HH:MM" maxlength="5" oninput="autoCalc()"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" id="nextDay" oninput="autoCalc()" style="width:15px;height:15px;">
+          <label for="nextDay" style="text-transform:none;letter-spacing:0;font-size:10px;cursor:pointer;font-weight:500;color:#475569;">On-block next calendar day</label>
+        </div>
+        <div id="fdpAssumption" style="display:none;margin-top:8px;padding:6px 8px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:4px;font-size:9px;color:#0369a1;line-height:1.5">
+          <strong>Assumptions:</strong> FDP = flight time (<span id="fpFlightTime">—</span>) + 60 min report + 10 min taxi. Duty = FDP + 30 min post-duty. <span id="ftlAutoHint" style="color:#16a34a;font-weight:600;display:none">✓ Auto-filled.</span>
+        </div>
       </div>
-      <div class="sep"></div>
+
+      <!-- FDP RESULTS -->
       <div class="card">
-        <div class="ct">Cumulative Limits — ORO.FTL.210</div>
-        <div class="tip" style="margin-bottom:10px;">Enter prior totals. This flight's computed flight time is added automatically.</div>
+        <div class="ct">Flight Duty Period</div>
+        <div class="rrow"><div class="rl">Report Time</div><div class="rv" id="r_rep">--:--z</div></div>
+        <div class="rrow"><div class="rl">Sched FDP</div><div class="rv" id="r_sFDP">--:--</div></div>
+        <div class="rrow"><div class="rl">Actual FDP</div><div class="rv" id="r_aFDP">--:--</div></div>
+        <div class="rrow"><div class="rl">Max Permitted</div><div class="rv" id="r_maxFDP">--:--</div></div>
+        <div class="rrow"><div class="rl">Headroom</div><div class="rv" id="r_head">--:--</div></div>
+        <div class="rrow"><div class="rl">Table</div><div class="rsm" id="r_tbl">—</div></div>
+        <div class="pbw"><div class="pbt"><div class="pbf" id="fdpBar" style="width:0%;background:#16a34a"></div></div><div class="pbl"><span>0%</span><span style="opacity:.5">80%</span><span>100%</span></div></div>
+        <div style="text-align:right;font-family:var(--mono);font-size:10px;color:#94a3b8;margin-top:2px" id="fdpPct">—</div>
+      </div>
+    </div>
+
+    <!-- LOCAL TIMES -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ct">Local Times</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--ftl-blue);letter-spacing:.5px;margin-bottom:6px">DEPARTURE</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <label style="font-size:10px;color:var(--ftl-t2);white-space:nowrap">UTC offset:</label>
+            <select id="depUtcOffset" onchange="updateLocalTimes()" style="font-family:var(--mono);font-size:12px;padding:4px 6px;border:1px solid var(--ftl-bd2);border-radius:4px">
+              <option value="-12">-12:00</option><option value="-11">-11:00</option><option value="-10">-10:00</option><option value="-9">-09:00</option><option value="-8">-08:00</option><option value="-7">-07:00</option><option value="-6">-06:00</option><option value="-5">-05:00</option><option value="-4">-04:00</option><option value="-3">-03:00</option><option value="-2">-02:00</option><option value="-1">-01:00</option><option value="0" selected>UTC</option><option value="1">+01:00</option><option value="2">+02:00</option><option value="3">+03:00</option><option value="4">+04:00</option><option value="5">+05:00</option><option value="6">+06:00</option><option value="7">+07:00</option><option value="8">+08:00</option><option value="9">+09:00</option><option value="10">+10:00</option><option value="11">+11:00</option><option value="12">+12:00</option>
+            </select>
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--ftl-t2)">
+            <div>Off Block: <strong id="localDepOB">--:--</strong> local</div>
+            <div>Airborne: <strong id="localDepAIR">--:--</strong> local</div>
+          </div>
+        </div>
+        <div style="width:1px;background:var(--ftl-bd);align-self:stretch"></div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--ftl-blue);letter-spacing:.5px;margin-bottom:6px">ARRIVAL</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <label style="font-size:10px;color:var(--ftl-t2);white-space:nowrap">UTC offset:</label>
+            <select id="arrUtcOffset" onchange="updateLocalTimes()" style="font-family:var(--mono);font-size:12px;padding:4px 6px;border:1px solid var(--ftl-bd2);border-radius:4px">
+              <option value="-12">-12:00</option><option value="-11">-11:00</option><option value="-10">-10:00</option><option value="-9">-09:00</option><option value="-8">-08:00</option><option value="-7">-07:00</option><option value="-6">-06:00</option><option value="-5">-05:00</option><option value="-4">-04:00</option><option value="-3">-03:00</option><option value="-2">-02:00</option><option value="-1">-01:00</option><option value="0" selected>UTC</option><option value="1">+01:00</option><option value="2">+02:00</option><option value="3">+03:00</option><option value="4">+04:00</option><option value="5">+05:00</option><option value="6">+06:00</option><option value="7">+07:00</option><option value="8">+08:00</option><option value="9">+09:00</option><option value="10">+10:00</option><option value="11">+11:00</option><option value="12">+12:00</option>
+            </select>
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--ftl-t2)">
+            <div>Landing: <strong id="localArrLDG">--:--</strong> local</div>
+            <div>On Block: <strong id="localArrONB">--:--</strong> local</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TWO-COLUMN: TIMES/DELAY + DUTY/REST -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="card">
+        <div class="ct">Times &amp; Delay</div>
+        <div class="rrow"><div class="rl">Sched Flight Time</div><div class="rv" id="r_sFT">--:--</div></div>
+        <div class="rrow"><div class="rl">Actual Flight Time</div><div class="rv" id="r_aFT">--:--</div></div>
+        <div class="rrow"><div class="rl">Duty Period</div><div class="rv" id="r_duty">--:--</div></div>
+        <div class="rrow"><div class="rl">Departure Delay</div><div class="rv" id="r_delay">—</div></div>
+        <div class="rrow"><div class="rl">Delay Rule</div><div class="rsm" id="r_dRule">—</div></div>
+      </div>
+      <div class="card">
+        <div class="ct">Minimum Rest Required</div>
+        <div class="rrow"><div class="rl">After This FDP</div><div class="rv" id="r_rest">--:--</div></div>
+        <div class="rrow"><div class="rl">Basis</div><div class="rsm" id="r_restBasis">—</div></div>
+        <div class="rrow"><div class="rl">Sleep Opportunity</div><div class="rv" id="r_sleep">—</div></div>
+        <div class="rrow"><div class="rl">Earliest Next Report</div><div class="rv" id="r_nextRep">--:--z</div></div>
+      </div>
+    </div>
+
+    <div id="opWarns"></div>
+
+    <!-- IN-FLIGHT REST PLANNER -->
+    <details class="card" style="margin-bottom:14px">
+      <summary style="cursor:pointer;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.15em;color:#0f766e;text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:7px;border-bottom:2px solid #99f6e4"><span style="width:3px;height:12px;background:#0f766e;border-radius:2px"></span>In-Flight Rest Planner<span style="margin-left:auto;font-size:11px;opacity:.5">▼</span></summary>
+      <div style="padding:12px 14px">
+        <div style="font-size:10px;color:var(--ftl-t3);margin-bottom:10px">Split rest equally among crew. Enter times as minutes after takeoff / before landing, or as Zulu times.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+          <div class="fl"><label>Pilots</label>
+            <select id="restPilots" oninput="calcRest()"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
+          </div>
+          <div class="fl"><label>Rest Start (mins after T/O)</label>
+            <input type="number" id="restStartMins" value="90" min="0" oninput="calcRest()" />
+          </div>
+          <div class="fl"><label>Return (mins before LDG)</label>
+            <input type="number" id="restEndMins" value="30" min="0" oninput="calcRest()" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;padding-top:8px;border-top:1px dashed var(--ftl-bd)">
+          <div style="font-size:10px;font-weight:600;color:#0f766e;align-self:center">Or enter Zulu times:</div>
+          <div class="fl"><label>Rest Window Start (UTC)</label>
+            <input type="text" id="restStartZulu" placeholder="HH:MM" maxlength="5" oninput="calcRestFromZulu()" />
+          </div>
+          <div class="fl"><label>Rest Window End (UTC)</label>
+            <input type="text" id="restEndZulu" placeholder="HH:MM" maxlength="5" oninput="calcRestFromZulu()" />
+          </div>
+        </div>
+        <button class="calcbtn" style="background:#0f766e;width:100%" onclick="calcRest()">⟳  CALCULATE REST</button>
+        <div id="restResult" style="margin-top:10px"></div>
+      </div>
+    </details>
+
+    <!-- TABLE 7-3 -->
+    <details class="card" style="margin-bottom:14px">
+      <summary style="cursor:pointer;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--ftl-blue);text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:7px;border-bottom:2px solid var(--ftl-bluel)"><span style="width:3px;height:12px;background:var(--ftl-blue);border-radius:2px"></span>Table 7-3 — Max Daily FDP<span style="margin-left:auto;font-size:11px;opacity:.5">▼</span></summary>
+      <div style="padding:10px 14px;overflow-x:auto"><table class="ft" id="t73"><thead><tr><th>Report</th><th>1–2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead><tbody id="t73b"></tbody></table></div>
+    </details>
+
+    <!-- CUMULATIVE LIMITS -->
+    <details class="card" style="margin-bottom:14px">
+      <summary style="cursor:pointer;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--ftl-blue);text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:7px;border-bottom:2px solid var(--ftl-bluel)"><span style="width:3px;height:12px;background:var(--ftl-blue);border-radius:2px"></span>Cumulative Limits — ORO.FTL.210<span style="margin-left:auto;font-size:11px;opacity:.5">▼</span></summary>
+      <div style="padding:12px 14px">
+        <div class="tip" style="margin-bottom:8px;font-size:10px">Enter prior totals. This flight's time is added automatically.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
           <div>
             <div class="sec-head">Flight Time Limits</div>
@@ -724,16 +894,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
         </div>
         <div id="cumAlerts" style="margin-top:10px;"></div>
       </div>
-      <div class="card">
-        <div class="ct">Regulatory Basis</div>
-        <div style="font-size:11px;line-height:1.9;color:#475569;">
-          <div>• <strong>Regulations:</strong> ORO.FTL / CS-FTL.1 under EU 2018/1139 | CAWTR 2004</div>
-          <div>• <strong>Source:</strong> One Air OMA Issue 4/Rev 0 Chapter 7 | EASA CAP 1826 v05</div>
-          <div style="margin-top:8px;padding:8px 10px;background:#fee2e2;border-radius:6px;border:1px solid #fca5a5;color:#991b1b;font-size:10px;">⚠ DECISION SUPPORT TOOL ONLY. Does not replace the OMA or commander's authority.</div>
-        </div>
+    </details>
+
+    <!-- REGULATORY BASIS -->
+    <div class="card" style="margin-bottom:14px">
+      <div style="padding:10px 14px;font-size:11px;line-height:1.8;color:#475569;">
+        <strong>Regulations:</strong> ORO.FTL / CS-FTL.1 under EU 2018/1139 | CAWTR 2004 · <strong>Source:</strong> One Air OMA Issue 4/Rev 0 Chapter 7 | EASA CAP 1826 v05
+        <div style="margin-top:6px;padding:6px 8px;background:#fee2e2;border-radius:4px;border:1px solid #fca5a5;color:#991b1b;font-size:10px;">⚠ DECISION SUPPORT TOOL ONLY. Does not replace the OMA or commander's authority.</div>
       </div>
-      <div class="ftl-footer"><span>ONE AIR FTL CALCULATOR</span> · OMA 4-0 · ORO.FTL / CS-FTL.1</div>
     </div>
+
   </div>
 </div>
 
@@ -859,25 +1029,30 @@ function showError(msg){document.getElementById('errMsg').textContent=msg;showVi
 let currentPage='notam';
 function switchPage(page){
   currentPage=page;
-  document.getElementById('snNotam').classList.toggle('active',page==='notam');
-  document.getElementById('snDuty').classList.toggle('active',page==='duty');
-  document.getElementById('snPerf').classList.toggle('active',page==='perf');
+  var snNotam=document.getElementById('snNotam');if(snNotam)snNotam.classList.toggle('active',page==='notam');
+  var snDuty=document.getElementById('snDuty');if(snDuty)snDuty.classList.toggle('active',page==='duty');
+  var snPerf=document.getElementById('snPerf');if(snPerf)snPerf.classList.toggle('active',page==='perf');
+  var snEawm=document.getElementById('snEawm');if(snEawm)snEawm.classList.toggle('active',page==='eawm');
   const NOTAM_VIEWS=['uploadView','procView','errView','resultsView'];
-  var extraViews=['dutyView','perfView'];
+  var extraViews=['dutyView','perfView','rulesView'];
   if(page==='duty'){
-    NOTAM_VIEWS.forEach(v=>document.getElementById(v).classList.remove('active'));
-    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
-    document.getElementById('dutyView').classList.add('active');
+    NOTAM_VIEWS.forEach(v=>{var el=document.getElementById(v);if(el)el.classList.remove('active');});
+    extraViews.forEach(v=>{var el=document.getElementById(v);if(el)el.classList.remove('active');});
+    var dv=document.getElementById('dutyView');if(dv)dv.classList.add('active');
     if(flightData)autoPopulateDuty(flightData);
   } else if(page==='perf'){
-    NOTAM_VIEWS.forEach(v=>document.getElementById(v).classList.remove('active'));
-    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
-    document.getElementById('perfView').classList.add('active');
+    NOTAM_VIEWS.forEach(v=>{var el=document.getElementById(v);if(el)el.classList.remove('active');});
+    extraViews.forEach(v=>{var el=document.getElementById(v);if(el)el.classList.remove('active');});
+    var pv=document.getElementById('perfView');if(pv)pv.classList.add('active');
     if(perfData) renderPerf();
+  } else if(page==='eawm'||page==='rules'){
+    NOTAM_VIEWS.forEach(v=>{var el=document.getElementById(v);if(el)el.classList.remove('active');});
+    extraViews.forEach(v=>{var el=document.getElementById(v);if(el)el.classList.remove('active');});
+    var rv=document.getElementById('rulesView');if(rv)rv.classList.add('active');
   } else {
-    extraViews.forEach(v=>document.getElementById(v).classList.remove('active'));
+    extraViews.forEach(v=>{var el=document.getElementById(v);if(el)el.classList.remove('active');});
     const last=sessionStorage.getItem('lastNotamView')||'uploadView';
-    document.getElementById(last).classList.add('active');
+    var lv=document.getElementById(last);if(lv)lv.classList.add('active');
   }
 }
 
@@ -2223,9 +2398,10 @@ function renderPerf(){
   var fmtW=function(v){return v==null?'—':Number(v).toLocaleString()+' kg';};
   var fmtN=function(v){return v==null?'—':Number(v).toLocaleString();};
 
-  // TOC Gross Weight = TOW - fuel burn to TOC (client-side from nav log)
+  // TOC Gross Weight = Ramp Weight - BO at TOC
+  // BO(KGS) is cumulative from ramp (includes taxi), so subtract from Ramp Weight, not TOW
   var tocBurn=navLogData?.tocBoKg!=null?navLogData.tocBoKg:(d.tocBoKg||null);
-  var tocGW=tocBurn!=null?tow-tocBurn:null;
+  var tocGW=tocBurn!=null?rampWt-tocBurn:null;
   if(tocGW!=null&&tocGW<100000) tocGW=null;
 
   // Optimum Altitude
@@ -2239,7 +2415,7 @@ function renderPerf(){
   var moraBO=moraSrc?.boKg!=null?moraSrc.boKg:null;
   var moraLat=moraSrc?.lat||0;
   var moraLon=moraSrc?.lon||0;
-  var moraGW=moraBO!=null?tow-moraBO:null;
+  var moraGW=moraBO!=null?rampWt-moraBO:null;
   if(moraGW!=null&&moraGW<100000) moraGW=null;
 
   // Driftdown at MORA GW
@@ -2315,7 +2491,7 @@ function renderPerf(){
   // ══ OPTIMUM ALTITUDE (Features 3) ══
   h+=`<div class="perf-card" style="margin-bottom:16px"><div style="padding:14px 20px;background:#f3f0ff;border-bottom:1.5px solid #ddd6fe;display:flex;justify-content:space-between;align-items:center">
     <div><div style="font-size:10px;font-weight:700;color:#5b21b6;letter-spacing:1px;text-transform:uppercase">Optimum Cruise Altitude · ${engName} · ISA+10°C & Below</div>
-    <div style="font-size:12px;color:var(--text2);margin-top:3px">TOC GW: ${fmtW(tocGW)} (TOW ${fmtW(tow)} − burn ${fmtW(tocBurn)})</div></div>
+    <div style="font-size:12px;color:var(--text2);margin-top:3px">TOC GW: ${fmtW(tocGW)} (Ramp ${fmtW(rampWt)} − BO ${fmtW(tocBurn)})</div></div>
     <div style="text-align:right"><div style="font-family:var(--mono);font-size:36px;font-weight:800;color:#5b21b6">${optAlt?'FL'+Math.round(optAlt/100):'—'}</div>
     ${optAlt?`<div style="font-size:11px;color:var(--text3)">${fmtN(optAlt)} ft</div>`:''}</div></div></div>`;
 
@@ -2913,7 +3089,134 @@ function calculate(){
   hlT73(sRN,secs);checkCum();
 }
 
-function autoCalc(){if($id('schedOB').value)calculate();}
+function autoCalc(){if($id('schedOB').value){calculate();updateLocalTimes();}}
+
+function updateLocalTimes(){
+  var z=function(v){return String(v).padStart(2,'0');};
+  var depOff=parseInt($id('depUtcOffset').value)||0;
+  var arrOff=parseInt($id('arrUtcOffset').value)||0;
+  function toLocal(timeId,offset){
+    var el=$id(timeId);if(!el||!el.value)return'--:--';
+    var m=t2m(el.value);if(m===null)return'--:--';
+    var local=m+offset*60;
+    if(local<0)local+=1440;if(local>=1440)local-=1440;
+    return z(Math.floor(local/60))+':'+z(local%60);
+  }
+  var sOB=$id('actOB')&&$id('actOB').value?'actOB':'schedOB';
+  var sAIR=$id('actAIR')&&$id('actAIR').value?'actAIR':'schedAIR';
+  var sLDG=$id('actLDG')&&$id('actLDG').value?'actLDG':'schedLDG';
+  var sONB=$id('actONB')&&$id('actONB').value?'actONB':'schedONB';
+  var el;
+  el=$id('localDepOB');if(el)el.textContent=toLocal(sOB,depOff);
+  el=$id('localDepAIR');if(el)el.textContent=toLocal(sAIR,depOff);
+  el=$id('localArrLDG');if(el)el.textContent=toLocal(sLDG,arrOff);
+  el=$id('localArrONB');if(el)el.textContent=toLocal(sONB,arrOff);
+}
+
+function calcRestFromZulu(){
+  var startZ=t2m($id('restStartZulu').value);
+  var endZ=t2m($id('restEndZulu').value);
+  if(startZ===null||endZ===null)return;
+  // Get airborne time from schedules
+  var sOB=t2m($id('actOB').value)||t2m($id('schedOB').value);
+  var sLDG=t2m($id('actLDG').value)||t2m($id('schedLDG').value);
+  if(sOB===null||sLDG===null)return;
+  var nday=$id('nextDay').checked;
+  // Convert Zulu start/end to minutes after takeoff
+  var startAfter=startZ-sOB;if(startAfter<0)startAfter+=1440;
+  var endBefore=sLDG-endZ;if(nday)endBefore+=1440;if(endBefore<0)endBefore+=1440;
+  // Update the minute fields
+  $id('restStartMins').value=Math.max(0,startAfter);
+  $id('restEndMins').value=Math.max(0,endBefore);
+  calcRest();
+}
+
+function calcRest(){
+  var res=$id('restResult');if(!res)return;
+  var numPilots=parseInt($id('restPilots').value)||3;
+  var startMins=parseInt($id('restStartMins').value);
+  var endMins=parseInt($id('restEndMins').value);
+  if(isNaN(startMins)||isNaN(endMins)){res.innerHTML='<div style="font-size:12px;color:var(--ftl-t3)">Enter values above</div>';return;}
+
+  // Get flight time from auto-populated fields
+  var sOB=t2m($id('schedOB').value),aOB=t2m($id('actOB').value);
+  var sLDG=t2m($id('schedLDG').value),aLDG=t2m($id('actLDG').value);
+  var sONB=t2m($id('schedONB').value),aONB=t2m($id('actONB').value);
+  var nday=$id('nextDay').checked;
+
+  // Airborne time = airborne to landing (or off-block to on-block minus taxi as fallback)
+  var airTime=null;
+  var useOB=aOB!=null?aOB:sOB;
+  var useLDG=aLDG!=null?aLDG:sLDG;
+  var useONB=aONB!=null?aONB:sONB;
+  if(useOB!=null&&useLDG!=null) airTime=dur(useOB,useLDG,nday);
+  else if(useOB!=null&&useONB!=null) airTime=dur(useOB,useONB,nday)-10; // minus taxi
+  if(!airTime||airTime<=0){res.innerHTML='<div style="font-size:12px;color:var(--ftl-t3)">No flight time available — fill in times above</div>';return;}
+
+  var available=airTime-startMins-endMins;
+  if(available<=0){res.innerHTML='<div style="font-size:12px;color:var(--ftl-red);font-weight:600">⚠ No rest time available — start/return periods exceed flight time</div>';return;}
+
+  var eachRest=Math.floor(available/numPilots);
+  var remainder=available-(eachRest*numPilots);
+
+  var z=function(v){return String(v).padStart(2,'0');};
+  var hm2=function(m){return Math.floor(m/60)+':'+z(m%60);};
+
+  // Calculate Zulu base time (airborne time)
+  var zuluBase=useOB; // off-block Zulu minutes
+  function toZulu(minsAfterOB){var m=(zuluBase+minsAfterOB)%1440;if(m<0)m+=1440;return z(Math.floor(m/60))+':'+z(m%60)+'z';}
+
+  // Build timeline
+  var h='<div style="border:1.5px solid #0d9488;border-radius:6px;overflow:hidden">';
+  h+='<div style="padding:10px 14px;background:#f0fdfa;border-bottom:1px solid #99f6e4;display:flex;justify-content:space-between;align-items:center">';
+  h+='<div style="font-size:10px;font-weight:700;color:#0f766e;letter-spacing:1px;text-transform:uppercase">In-Flight Rest Schedule</div>';
+  h+='<div style="font-family:var(--mono);font-size:12px;color:#0f766e">Flight time: '+hm2(airTime)+'</div></div>';
+
+  // Summary row
+  h+='<div style="padding:8px 14px;font-size:11px;color:#475569;border-bottom:1px solid #e2e8f0">';
+  h+='Rest window: <strong>'+toZulu(startMins)+' → '+toZulu(airTime-endMins)+'</strong> ('+hm2(available)+')';
+  h+='<br>Each pilot: <strong>'+hm2(eachRest)+'</strong>';
+  if(remainder>0) h+=' <span style="color:#94a3b8">(+'+remainder+' min unallocated)</span>';
+  h+='</div>';
+
+  // Timeline for each pilot
+  var currentOffset=startMins;
+  for(var p=0;p<numPilots;p++){
+    var restStart=currentOffset;
+    var restEnd=currentOffset+eachRest;
+    if(p===numPilots-1) restEnd=currentOffset+eachRest+remainder;
+
+    var thisRest=restEnd-restStart;
+    var pctStart=(restStart/airTime*100).toFixed(1);
+    var pctWidth=(thisRest/airTime*100).toFixed(1);
+
+    var colors=['#0d9488','#0284c7','#7c3aed','#c2410c'];
+    var col=colors[p%4];
+
+    h+='<div style="padding:8px 14px;border-bottom:1px solid #e2e8f0">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+    h+='<span style="font-size:12px;font-weight:700;color:'+col+'">Pilot '+(p+1)+'</span>';
+    h+='<span style="font-family:var(--mono);font-size:11px;color:var(--ftl-t2)"><strong>'+toZulu(restStart)+' → '+toZulu(restEnd)+'</strong> &nbsp;('+hm2(thisRest)+')</span>';
+    h+='</div>';
+
+    // Visual bar
+    h+='<div style="height:18px;background:#f1f5f9;border-radius:9px;position:relative;overflow:hidden">';
+    h+='<div style="position:absolute;left:'+pctStart+'%;width:'+pctWidth+'%;height:100%;background:'+col+';border-radius:9px;opacity:0.8"></div>';
+    h+='</div>';
+    h+='</div>';
+
+    currentOffset=restEnd;
+  }
+
+  // Footer with active time
+  var activeBeforeRest=startMins;
+  var activeAfterRest=airTime-currentOffset+endMins;
+  h+='<div style="padding:8px 14px;background:#f8fafc;font-size:10px;color:#94a3b8">';
+  h+='Active: first '+hm2(startMins)+' + last '+hm2(airTime-currentOffset+endMins)+' of flight';
+  h+='</div></div>';
+
+  res.innerHTML=h;
+}
 
 function buildT73(){
   const tb=$id('t73b');if(!tb)return;
@@ -3001,11 +3304,207 @@ function autoPopulateDuty(d){
   var hint=$id('ftlAutoHint');if(hint)hint.style.display='inline';
   $id('dutyAutoNote').classList.add('show');
   var badge=$id('dutyBadge');if(badge){badge.textContent='AUTO';badge.classList.add('populated');}
-  if($id('schedOB')&&$id('schedOB').value)autoCalc();
+  if($id('schedOB')&&$id('schedOB').value){autoCalc();updateLocalTimes();calcRest();}
 }
 
 // Init FTL on load
 window.addEventListener('load',()=>{buildT73();checkCum();});
+
+
+// ══ ROUTE RULES (EAWM) ENGINE ══
+// ══ MANUAL SEARCH — AI-powered search of uploaded PDFs ══
+var manualTexts=[]; // [{name, text, pages[]}]
+var manualFiles=[];
+var searchHistory=[]; // [{q, a, sources}]
+
+// File upload handler
+document.getElementById('fiManuals').addEventListener('change',function(e){
+  manualFiles=Array.from(e.target.files);
+  if(manualFiles.length>0){
+    document.getElementById('fnManuals').textContent='✓ '+manualFiles.length+' file(s): '+manualFiles.map(function(f){return f.name;}).join(', ');
+    document.getElementById('dzManuals').classList.add('ready');
+    document.getElementById('clrManuals').style.display='inline';
+    var badge=document.getElementById('eawmBadge');if(badge){badge.textContent=manualFiles.length+' PDF';badge.classList.add('populated');}
+    // Extract text immediately
+    extractManualTexts();
+  }
+});
+
+function clearManuals(e){
+  e.stopPropagation();
+  manualFiles=[];manualTexts=[];
+  document.getElementById('fiManuals').value='';
+  document.getElementById('fnManuals').textContent='';
+  document.getElementById('dzManuals').classList.remove('ready');
+  document.getElementById('clrManuals').style.display='none';
+  var badge=document.getElementById('eawmBadge');if(badge){badge.textContent='AI';badge.classList.remove('populated');}
+}
+
+async function extractManualTexts(){
+  manualTexts=[];
+  for(var i=0;i<manualFiles.length;i++){
+    var f=manualFiles[i];
+    console.log('[MANUAL] Extracting: '+f.name);
+    try{
+      var ab=await f.arrayBuffer();
+      var pdf=await pdfjsLib.getDocument({data:ab}).promise;
+      var pages=[];
+      for(var p=1;p<=pdf.numPages;p++){
+        var page=await pdf.getPage(p);
+        var tc=await page.getTextContent();
+        var pageText=tc.items.map(function(it){return it.str;}).join(' ');
+        pages.push({num:p,text:pageText});
+      }
+      var fullText=pages.map(function(pg){return'[Page '+pg.num+']\n'+pg.text;}).join('\n\n');
+      manualTexts.push({name:f.name,text:fullText,pages:pages,pageCount:pdf.numPages});
+      console.log('[MANUAL] '+f.name+': '+pdf.numPages+' pages, '+fullText.length+' chars');
+    }catch(e){
+      console.warn('[MANUAL] Failed to extract '+f.name+':',e);
+    }
+  }
+  // Hide empty state
+  var empty=document.getElementById('manualEmpty');
+  if(empty&&manualTexts.length>0) empty.style.display='none';
+  console.log('[MANUAL] '+manualTexts.length+' manual(s) extracted, total '+manualTexts.reduce(function(s,m){return s+m.text.length;},0)+' chars');
+}
+
+function setManualQ(el){
+  document.getElementById('manualSearchInput').value=el.textContent;
+  searchManuals();
+}
+
+async function searchManuals(){
+  var input=document.getElementById('manualSearchInput');
+  var btn=document.getElementById('manualSearchBtn');
+  var histDiv=document.getElementById('manualSearchHistory');
+  if(!input||!histDiv) return;
+  var query=input.value.trim();
+  if(!query) return;
+
+  if(manualTexts.length===0){
+    alert('Please upload at least one PDF manual first.');
+    return;
+  }
+
+  // Show loading state
+  btn.disabled=true;btn.textContent='Searching...';
+  var loadingId='ms_load_'+Date.now();
+  histDiv.insertAdjacentHTML('afterbegin',
+    '<div class="ms-card" id="'+loadingId+'"><div class="ms-q">🔍 '+esc(query)+'</div>'+
+    '<div class="ms-loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span><br>Searching '+manualTexts.length+' manual(s)...</div></div>');
+
+  try{
+    // Build context from manuals — send relevant chunks to stay within token limits
+    // First do a local keyword pre-filter to find the most relevant pages
+    var queryWords=query.toLowerCase().split(/\s+/).filter(function(w){return w.length>2;});
+    var scoredPages=[];
+
+    manualTexts.forEach(function(doc){
+      doc.pages.forEach(function(pg){
+        var lower=pg.text.toLowerCase();
+        var score=0;
+        queryWords.forEach(function(w){
+          var idx=0;
+          while((idx=lower.indexOf(w,idx))!==-1){score++;idx+=w.length;}
+        });
+        if(score>0) scoredPages.push({doc:doc.name,num:pg.num,text:pg.text,score:score});
+      });
+    });
+
+    // Sort by relevance score, take top 30 pages
+    scoredPages.sort(function(a,b){return b.score-a.score;});
+    var topPages=scoredPages.slice(0,30);
+
+    if(topPages.length===0){
+      // No keyword matches — send first 20 pages of each doc as context
+      manualTexts.forEach(function(doc){
+        doc.pages.slice(0,20).forEach(function(pg){
+          topPages.push({doc:doc.name,num:pg.num,text:pg.text,score:0});
+        });
+      });
+      topPages=topPages.slice(0,30);
+    }
+
+    // Build context string
+    var context='';
+    topPages.forEach(function(pg){
+      context+='--- '+pg.doc+' Page '+pg.num+' ---\n'+pg.text+'\n\n';
+    });
+
+    // Truncate to ~80k chars to stay within API limits
+    if(context.length>80000) context=context.substring(0,80000);
+
+    // Call Anthropic API
+    var response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        system:'You are an aviation manual search assistant. The user has uploaded aviation manuals (Jeppesen EAWM, company operations manuals, FCOMs, etc). You are given relevant pages from these manuals as context. Answer the user\'s question accurately based ONLY on the provided manual content. Always cite the source document name and page number for every piece of information you provide. Format: "Source: [filename] Page [number]". If the information is not found in the provided pages, say so clearly. Be concise and operationally focused — this is for airline pilots doing pre-flight preparation.',
+        messages:[
+          {role:'user',content:'Here are the relevant pages from the uploaded manuals:\n\n'+context+'\n\n---\n\nQuestion: '+query}
+        ]
+      })
+    });
+
+    var data=await response.json();
+    var answer='';
+    if(data.content){
+      data.content.forEach(function(block){if(block.type==='text')answer+=block.text;});
+    }
+    if(!answer) answer='No answer could be generated. The API may be unavailable or the manuals may not contain relevant information for this query.';
+
+    // Format answer with markdown-like rendering
+    var formattedAnswer=formatManualAnswer(answer);
+
+    // Build sources list
+    var sourceList=[];
+    topPages.slice(0,10).forEach(function(pg){
+      var key=pg.doc+' p'+pg.num;
+      if(sourceList.indexOf(key)<0) sourceList.push(key);
+    });
+
+    // Store in history
+    searchHistory.unshift({q:query,a:formattedAnswer,sources:sourceList});
+
+    // Replace loading card
+    var loadEl=document.getElementById(loadingId);
+    if(loadEl){
+      loadEl.innerHTML='<div class="ms-q">🔍 '+esc(query)+'</div>'+
+        '<div class="ms-a">'+formattedAnswer+
+        '<div class="ms-src">Sources searched: '+sourceList.slice(0,6).join(' · ')+(sourceList.length>6?' · +'+(sourceList.length-6)+' more':'')+'</div></div>';
+    }
+
+  }catch(e){
+    console.error('[MANUAL] Search error:',e);
+    var loadEl=document.getElementById(loadingId);
+    if(loadEl){
+      loadEl.innerHTML='<div class="ms-q">🔍 '+esc(query)+'</div>'+
+        '<div class="ms-a" style="color:var(--red)">Search failed: '+esc(e.message||'Unknown error')+'. Check your internet connection and try again.</div>';
+    }
+  }
+
+  btn.disabled=false;btn.textContent='🔍 Search';
+  input.value='';
+  input.focus();
+}
+
+function formatManualAnswer(text){
+  // Convert markdown-like formatting to HTML
+  var h=esc(text);
+  // Bold
+  h=h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  // Source references — highlight
+  h=h.replace(/(Source:\s*[^\n]+)/g,'<span style="display:block;margin-top:6px;padding:4px 8px;background:#f0f9ff;border-left:3px solid var(--blue);font-size:11px;color:#0369a1;border-radius:0 4px 4px 0">$1</span>');
+  // Page references
+  h=h.replace(/\b(Page\s+\d+)/g,'<strong style="color:var(--navy)">$1</strong>');
+  // Line breaks to paragraphs
+  h=h.replace(/\n\n/g,'</p><p>');
+  h=h.replace(/\n/g,'<br>');
+  h='<p>'+h+'</p>';
+  return h;
+}
 
 </script>
 </body>
