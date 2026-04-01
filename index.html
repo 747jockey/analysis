@@ -153,9 +153,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 
 /* RESULTS */
 #resultsView{flex-direction:row}
-.left-panel{width:420px;flex-shrink:0;background:var(--surface);border-right:1.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.right-panel{flex:1;position:relative;overflow:hidden}
+.left-panel{width:380px;flex-shrink:0;background:var(--surface);border-right:1.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.right-panel{flex:1;position:relative;overflow:hidden;min-height:400px}
 #map{width:100%;height:100%}
+@media(max-width:900px){
+  #resultsView{flex-direction:column}
+  .left-panel{width:100%;max-height:55vh;border-right:none;border-bottom:1.5px solid var(--border)}
+  .right-panel{min-height:300px;height:45vh}
+}
+.right-panel.fullscreen{position:fixed!important;top:0;left:0;width:100vw!important;height:100vh!important;z-index:9999;background:#fff}
+.right-panel.fullscreen #map{width:100%;height:100%}
+.map-notam-panel{display:none;position:absolute;bottom:0;left:0;right:0;max-height:40vh;background:var(--surface);border-top:2px solid var(--navy);overflow-y:auto;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.15)}
+.map-notam-panel.open{display:block}
+.map-notam-panel .mnp-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--navy);color:#fff;position:sticky;top:0;z-index:1}
+.map-notam-panel .mnp-close{cursor:pointer;font-size:18px;padding:2px 8px;opacity:0.7}
+.map-notam-panel .mnp-close:hover{opacity:1}
+.map-notam-panel .mnp-body{padding:10px 16px}
+.map-notam-panel .mnp-item{padding:8px 0;border-bottom:1px solid var(--border)}
+.map-notam-panel .mnp-item:last-child{border-bottom:none}
+.map-notam-panel .mnp-sev{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:3px;margin-right:6px}
+.map-notam-panel .mnp-sev.critical{background:#fee2e2;color:#dc2626}
+.map-notam-panel .mnp-sev.significant{background:#fef3c7;color:#d97706}
+.map-notam-panel .mnp-sev.advisory{background:#dbeafe;color:#1a5fa0}
 
 /* FLIGHT STRIP */
 .flight-strip{padding:14px 16px;border-bottom:1.5px solid var(--border);flex-shrink:0;background:var(--navy)}
@@ -443,7 +462,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
     <div class="hdr-dot"></div>
     <div class="hdr-clock" id="clock">--:--:--Z</div>
     <button class="btn btn-save" id="btnSave" onclick="saveOfflineBriefing()">⬇ Save Offline Brief</button>
-    <span id="offlineBadge" style="display:none;font-size:10px;font-weight:700;color:var(--green);background:var(--green-bg);border:1px solid var(--green-border);padding:3px 8px;border-radius:4px;letter-spacing:.5px">✓ OFFLINE READY</span>
+    
     <button class="btn btn-ghost" id="btnNew" onclick="resetApp()">↩ New Brief</button>
   </div>
 </header>
@@ -589,8 +608,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
     <div class="tabs" id="tabs"></div>
     <div class="notam-list" id="notamList"></div>
   </div>
-  <div class="right-panel">
+  <div class="right-panel" id="mapPanel">
     <div id="map"></div>
+    <div class="map-notam-panel" id="mapNotamPanel">
+      <div class="mnp-header">
+        <div><span style="font-size:12px;font-weight:700;letter-spacing:.5px" id="mnpTitle">NOTAMs</span></div>
+        <span class="mnp-close" onclick="closeMapNotam()">✕</span>
+      </div>
+      <div class="mnp-body" id="mnpBody"></div>
+    </div>
     <div class="save-banner" id="saveBanner"><span style="font-size:12px;font-weight:600;color:var(--green)">✓ Offline briefing saved</span><span style="font-size:14px;color:var(--text3);cursor:pointer;padding:2px 6px" onclick="this.parentElement.classList.remove('show')">✕</span></div>
     <div class="map-legend">
       <div class="ml-title">NOTAM Severity</div>
@@ -919,77 +945,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-// ══ OFFLINE SERVICE WORKER (caches CDN libs + map tiles) ══
-if('serviceWorker' in navigator&&'caches' in window){
-  var swCode='self.addEventListener("install",function(e){self.skipWaiting();});'
-    +'self.addEventListener("activate",function(e){e.waitUntil(clients.claim());});'
-    +'self.addEventListener("fetch",function(e){'
-    +'  e.respondWith(caches.open("notam-v1").then(function(cache){'
-    +'    return cache.match(e.request).then(function(r){'
-    +'      if(r)return r;'
-    +'      return fetch(e.request).then(function(resp){'
-    +'        if(resp&&resp.status===200&&resp.type!=="opaque"){cache.put(e.request,resp.clone());}'
-    +'        return resp;'
-    +'      }).catch(function(){return r||new Response("offline",{status:503});});'
-    +'    });'
-    +'  }));'
-    +'});';
-  var swBlob=new Blob([swCode],{type:'application/javascript'});
-  var swUrl=URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl,{scope:'/'}).then(function(){
-    console.log('[OFFLINE] Service worker registered — tiles will be cached');
-  }).catch(function(e){
-    // Service workers from blob URLs don't work in all browsers — fall back to Cache API
-    console.log('[OFFLINE] SW registration failed (expected in sandboxed environments), using Cache API fallback');
-  });
-}
-
-// Pre-cache map tiles for a given bounds at given zoom levels
-function preCacheTiles(bounds,zoomLevels){
-  if(!('caches' in window))return;
-  caches.open('notam-v1').then(function(cache){
-    var tileUrls=[];
-    var subs=['a','b','c','d'];
-    zoomLevels.forEach(function(z){
-      var nw=bounds.getNorthWest(),se=bounds.getSouthEast();
-      var x1=lon2tile(nw.lng,z),x2=lon2tile(se.lng,z);
-      var y1=lat2tile(nw.lat,z),y2=lat2tile(se.lat,z);
-      if(x1>x2){var t=x1;x1=x2;x2=t;}
-      if(y1>y2){var t=y1;y1=y2;y2=t;}
-      // Cap at 200 tiles per zoom to avoid flooding
-      var count=0;
-      for(var x=x1;x<=x2&&count<200;x++){
-        for(var y=y1;y<=y2&&count<200;y++){
-          var s=subs[(x+y)%4];
-          tileUrls.push('https://'+s+'.basemaps.cartocdn.com/rastertiles/voyager/'+z+'/'+x+'/'+y+'.png');
-          count++;
-        }
-      }
-    });
-    console.log('[OFFLINE] Pre-caching '+tileUrls.length+' map tiles...');
-    var cached=0;
-    tileUrls.forEach(function(url){
-      cache.match(url).then(function(existing){
-        if(!existing){
-          fetch(url,{mode:'cors'}).then(function(resp){
-            if(resp&&resp.ok){cache.put(url,resp);cached++;if(cached%50===0)console.log('[OFFLINE] Cached '+cached+' tiles...');}
-          }).catch(function(){});
-        }
-      });
-    });
-    setTimeout(function(){
-      var badge=document.getElementById('offlineBadge');
-      if(badge){badge.style.display='inline';badge.textContent='✓ CACHED';}
-      console.log('[OFFLINE] Tile caching complete');
-    },5000);
-  }).catch(function(){});
-}
-function lon2tile(lon,z){return Math.floor((lon+180)/360*Math.pow(2,z));}
-function lat2tile(lat,z){return Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,z));}
-
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ══ STATE ══
@@ -1079,7 +1036,7 @@ function resetAnalysisData(){
   // Clear result views
   var pc=document.getElementById('perfContainer');if(pc)pc.innerHTML='';
   ['perfBadge','dutyBadge'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('populated');});
-  var ob=document.getElementById('offlineBadge');if(ob)ob.style.display='none';
+  
   console.log('[RESET] All analysis data cleared');
 }
 function setFileN(file,name){
@@ -1639,6 +1596,17 @@ function parseNavLog(text){
   // Instead of splitting into lines (which fails with pdf.js single-line-per-page),
   // we find ALL coordinate patterns and extract data from the text between them.
 
+  // ── STEP 0: Strip page header/footer numbers that contaminate BO extraction ──
+  // Detect the Log Nr from any FMS IDENT header, then strip ALL standalone occurrences
+  var logNrMatch=text.match(/Log\s*Nr\s*[.:]*\s*(\d{3,6})/);
+  var logNr=logNrMatch?logNrMatch[1]:null;
+  if(logNr){
+    console.log('[MORA] Detected Log Nr: '+logNr+' — stripping all occurrences');
+    text=text.replace(new RegExp('\\b'+logNr+'\\b','g'),'XXXX');
+  }
+  // Strip PPS footer numbers
+  text=text.replace(/PPS\s+\d+/g,'PPS_X');
+
   var coordPattern=/([NS]\d{2}:\d{2}\.\d)\s+([EW]\d{2,3}:\d{2}\.\d)/g;
   var coords=[];
   var m;
@@ -1692,6 +1660,12 @@ function parseNavLog(text){
 
     // TOC burn-off
     if(wptName==='-TOC-'&&boKg!=null) tocBoKg=boKg;
+    if(wptName==='-TOC-'){
+      console.log('[MORA] TOC chunk (last 300):', chunk.substring(Math.max(0,chunk.length-300)));
+      console.log('[MORA] TOC afterName:', afterName.substring(0,200));
+      console.log('[MORA] TOC nums found:', allNums);
+      console.log('[MORA] TOC BO selected:', boKg);
+    }
 
     waypoints.push({name:wptName, mora:mora, boKg:boKg, lat:lat, lon:lon});
   }
@@ -2106,92 +2080,144 @@ function expandCard(id){const card=document.querySelector(`[data-id="${CSS.escap
 let notamMarkers=[];
 function buildMap(d){
   if(leafletMap){leafletMap.remove();leafletMap=null;}markers=[];notamMarkers=[];
-  leafletMap=L.map('map',{zoomControl:true,attributionControl:false});
-  // Cache-aware tile layer — serves from Cache API when offline
-  var CachedTileLayer=L.TileLayer.extend({
-    createTile:function(coords,done){
-      var tile=document.createElement('img');
-      var url=this.getTileUrl(coords);
-      tile.alt='';
-      tile.setAttribute('role','presentation');
-
-      // Try network first, fall back to cache
-      fetch(url,{mode:'cors'}).then(function(resp){
-        if(resp&&resp.ok){
-          // Store in cache for offline
-          if('caches' in window) caches.open('notam-v1').then(function(c){c.put(url,resp.clone());}).catch(function(){});
-          return resp.blob();
-        }
-        throw new Error('not ok');
-      }).then(function(blob){
-        tile.src=URL.createObjectURL(blob);
-        done(null,tile);
-      }).catch(function(){
-        // Network failed — try cache
-        if('caches' in window){
-          caches.open('notam-v1').then(function(c){return c.match(url);}).then(function(cached){
-            if(cached){cached.blob().then(function(b){tile.src=URL.createObjectURL(b);done(null,tile);});}
-            else{tile.src='';done(null,tile);}
-          }).catch(function(){tile.src='';done(null,tile);});
-        } else {tile.src='';done(null,tile);}
-      });
-      return tile;
-    }
-  });
-  new CachedTileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(leafletMap);
-  // Borders
-  // Country borders (cached for offline)
-  var bordersUrl='https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
-  (function(){
-    function loadBorders(data){if(typeof topojson!=='undefined'){var c=topojson.feature(data,data.objects.countries);L.geoJSON(c,{style:{color:'#2c3e50',weight:1.5,fill:false,opacity:0.75}}).addTo(leafletMap);}}
-    fetch(bordersUrl).then(function(r){
-      if('caches' in window) caches.open('notam-v1').then(function(c){c.put(bordersUrl,r.clone());}).catch(function(){});
-      return r.json();
-    }).then(loadBorders).catch(function(){
-      // Offline — try cache
-      if('caches' in window) caches.open('notam-v1').then(function(c){return c.match(bordersUrl);}).then(function(r){if(r)return r.json();}).then(function(d){if(d)loadBorders(d);}).catch(function(){});
-    });
-  })();
+  leafletMap=L.map('map',{zoomControl:true,attributionControl:false,preferCanvas:true});
+  // Standard tile layer — fast, no fetch overhead
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd'}).addTo(leafletMap);
   const pts=[];
   // Route line — use nav log waypoints for exact route
   const rp=[];
   if(navLogData&&navLogData.waypoints&&navLogData.waypoints.length>=2){
     navLogData.waypoints.forEach(function(w){if(w.lat&&w.lon)rp.push([w.lat,w.lon]);});
   }
-  // Fallback to extractRouteFromText
   if(rp.length<2)(d.route||[]).filter(validCoords).forEach(w=>rp.push([w.lat,w.lon]));
-  // Final fallback: just dep→dest
   if(rp.length<2){if(validCoords(d.departure))rp.push([d.departure.lat,d.departure.lon]);if(validCoords(d.destination))rp.push([d.destination.lat,d.destination.lon]);}
   if(rp.length>=2){
-    // White border line
-    L.polyline(rp,{color:'#ffffff',weight:5,opacity:0.5,lineJoin:'round'}).addTo(leafletMap);
-    // Main route — dotted navy line
-    L.polyline(rp,{color:'#0f2340',weight:2.5,dashArray:'4 8',opacity:0.9,lineJoin:'round'}).addTo(leafletMap);
+    L.polyline(rp,{color:'#0f2340',weight:3,opacity:0.85,lineJoin:'round'}).addTo(leafletMap);
     rp.forEach(p=>pts.push(p));
-    // Small waypoint dots along the route
+    // Waypoint dots
     if(navLogData&&navLogData.waypoints){
       navLogData.waypoints.forEach(function(w){
         if(!w.lat||!w.lon)return;
-        if(w.name==='-TOC-'||w.name==='-SC-'||w.name==='-TD-')return; // skip pseudo-waypoints
+        if(w.name==='-TOC-'||w.name==='-SC-'||w.name==='-TD-')return;
         L.circleMarker([w.lat,w.lon],{radius:2.5,color:'#0f2340',fillColor:'#fff',fillOpacity:1,weight:1.5,opacity:0.8}).addTo(leafletMap)
           .bindTooltip(w.name,{permanent:false,direction:'top',offset:[0,-6],className:'wpt-tooltip'});
       });
     }
   }
-  function apLabel(icao,col){return L.divIcon({className:'',html:`<div style="font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:700;color:${col};white-space:nowrap;margin-left:12px;margin-top:-4px;text-shadow:0 1px 4px rgba(255,255,255,0.95)">${esc(icao)}</div>`,iconAnchor:[0,8]});}
-  function addAP(ap,role){if(!validCoords(ap))return;pts.push([ap.lat,ap.lon]);const icon=L.divIcon({className:'',html:'<div style="background:#0a6e35;border:2.5px solid white;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 10px rgba(0,0,0,0.45)"></div>',iconSize:[16,16],iconAnchor:[8,8]});const mk=L.marker([ap.lat,ap.lon],{icon,zIndexOffset:500}).addTo(leafletMap).bindPopup(`<div class="popup-inner"><div class="popup-id">${esc(role)}</div><div class="popup-subject">${esc(ap.icao)} – ${esc(ap.name||'')}</div></div>`);markers.push(mk);L.marker([ap.lat,ap.lon],{icon:apLabel(ap.icao,'#0a6e35'),interactive:false}).addTo(leafletMap);}
-  function addAlt(ap){if(!validCoords(ap))return;pts.push([ap.lat,ap.lon]);const isER=(ap.type||'').includes('enroute'),col=isER?'#a04800':'#0f4fa0';const icon=L.divIcon({className:'',html:`<div style="width:14px;height:14px;background:${col};border:2.5px solid white;transform:rotate(45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>`,iconSize:[14,14],iconAnchor:[7,7]});const mk=L.marker([ap.lat,ap.lon],{icon,zIndexOffset:400}).addTo(leafletMap).bindPopup(`<div class="popup-inner"><div class="popup-id" style="color:${col}">${isER?'En-Route Alt':'Dest Alt'}</div><div class="popup-subject">${esc(ap.icao)} – ${esc(ap.name||'')}</div></div>`);markers.push(mk);L.marker([ap.lat,ap.lon],{icon:apLabel(ap.icao,col),interactive:false}).addTo(leafletMap);}
-  addAP(d.departure,'Departure');addAP(d.destination,'Destination');(d.alternates||[]).forEach(addAlt);
-  // NOTAM markers
-  const sc={CRITICAL:'#c0392b',SIGNIFICANT:'#c47a00',ADVISORY:'#1a5fa0'},sz={CRITICAL:15,SIGNIFICANT:12,ADVISORY:10};
-  const coordFallback={};if(validCoords(d.departure))coordFallback[d.departure.icao]=[d.departure.lat,d.departure.lon];if(validCoords(d.destination))coordFallback[d.destination.icao]=[d.destination.lat,d.destination.lon];(d.alternates||[]).filter(validCoords).forEach(a=>{coordFallback[a.icao]=[a.lat,a.lon];});
-  (d.notams||[]).forEach(n=>{let lat=n.lat,lon=n.lon;if(!validCoords({lat,lon})&&n.airport&&coordFallback[n.airport])[lat,lon]=coordFallback[n.airport];if(!validCoords({lat,lon}))return;pts.push([lat,lon]);const col=sc[n.severity]||'#8a9aaa',s=sz[n.severity]||9;const icon=L.divIcon({className:'',html:`<div style="background:${col};border:2px solid rgba(255,255,255,0.85);border-radius:50%;width:${s}px;height:${s}px;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,0.3)"></div>`,iconSize:[s,s],iconAnchor:[s/2,s/2]});const mk=L.marker([lat,lon],{icon,zIndexOffset:n.severity==='CRITICAL'?300:200}).addTo(leafletMap).bindPopup(`<div class="popup-inner"><div class="popup-sev ${(n.severity||'').toLowerCase()}">${n.severity}</div><div class="popup-id">${esc(n.id||'—')}</div><div class="popup-subject">${esc(n.subject||'—')}</div><button class="popup-btn" onclick="expandCard('${esc(n.id)}')">View Details →</button></div>`);mk._nid=n.id;mk._notam=n;markers.push(mk);notamMarkers.push(mk);});
-  if(pts.length){
-    var bnds=L.latLngBounds(pts).pad(0.14);
-    leafletMap.fitBounds(bnds);
-    // Pre-cache tiles at zoom levels 3-8 for offline use
-    setTimeout(function(){preCacheTiles(bnds,[3,4,5,6,7,8]);},2000);
+  // Airport labels
+  function apLabel(icao,col){return L.divIcon({className:'',html:'<div style="font-family:var(--sans);font-size:11px;font-weight:700;color:'+col+';white-space:nowrap;margin-left:12px;margin-top:-4px;text-shadow:0 1px 4px rgba(255,255,255,0.95)">'+esc(icao)+'</div>',iconAnchor:[0,8]});}
+  // Departure + Destination markers
+  function addAP(ap,role){
+    if(!validCoords(ap))return;pts.push([ap.lat,ap.lon]);
+    var icon=L.divIcon({className:'',html:'<div style="background:#0a6e35;border:2.5px solid white;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 10px rgba(0,0,0,0.45)"></div>',iconSize:[16,16],iconAnchor:[8,8]});
+    var mk=L.marker([ap.lat,ap.lon],{icon:icon,zIndexOffset:500}).addTo(leafletMap).bindPopup('<div class="popup-inner"><div class="popup-id">'+esc(role)+'</div><div class="popup-subject">'+esc(ap.icao)+' – '+esc(ap.name||'')+'</div></div>');
+    markers.push(mk);
+    L.marker([ap.lat,ap.lon],{icon:apLabel(ap.icao,'#0a6e35'),interactive:false}).addTo(leafletMap);
   }
+  // Alternate markers
+  function addAlt(ap){
+    if(!validCoords(ap))return;pts.push([ap.lat,ap.lon]);
+    var isER=(ap.type||'').includes('enroute'),col=isER?'#a04800':'#0f4fa0';
+    var icon=L.divIcon({className:'',html:'<div style="width:14px;height:14px;background:'+col+';border:2.5px solid white;transform:rotate(45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+    var mk=L.marker([ap.lat,ap.lon],{icon:icon,zIndexOffset:400}).addTo(leafletMap).bindPopup('<div class="popup-inner"><div class="popup-id" style="color:'+col+'">'+(isER?'En-Route Alt':'Dest Alt')+'</div><div class="popup-subject">'+esc(ap.icao)+' – '+esc(ap.name||'')+'</div></div>');
+    markers.push(mk);
+    L.marker([ap.lat,ap.lon],{icon:apLabel(ap.icao,col),interactive:false}).addTo(leafletMap);
+  }
+  addAP(d.departure,'Departure');addAP(d.destination,'Destination');(d.alternates||[]).forEach(addAlt);
+  // NOTAM severity markers
+  var sc={CRITICAL:'#c0392b',SIGNIFICANT:'#c47a00',ADVISORY:'#1a5fa0'},sz={CRITICAL:15,SIGNIFICANT:12,ADVISORY:10};
+  var coordFallback={};
+  if(validCoords(d.departure))coordFallback[d.departure.icao]=[d.departure.lat,d.departure.lon];
+  if(validCoords(d.destination))coordFallback[d.destination.icao]=[d.destination.lat,d.destination.lon];
+  (d.alternates||[]).filter(validCoords).forEach(function(a){coordFallback[a.icao]=[a.lat,a.lon];});
+  (d.notams||[]).forEach(function(n){
+    var lat=n.lat,lon=n.lon;
+    if(!validCoords({lat:lat,lon:lon})&&n.airport&&coordFallback[n.airport]){lat=coordFallback[n.airport][0];lon=coordFallback[n.airport][1];}
+    if(!validCoords({lat:lat,lon:lon}))return;
+    pts.push([lat,lon]);
+    var col=sc[n.severity]||'#8a9aaa',s=sz[n.severity]||9;
+    var icon=L.divIcon({className:'',html:'<div style="background:'+col+';border:2px solid rgba(255,255,255,0.85);border-radius:50%;width:'+s+'px;height:'+s+'px;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,0.3)"></div>',iconSize:[s,s],iconAnchor:[s/2,s/2]});
+    var mk=L.marker([lat,lon],{icon:icon,zIndexOffset:n.severity==='CRITICAL'?300:200}).addTo(leafletMap);
+    mk.on('click',function(){showMapNotam(n);});
+    mk._nid=n.id;mk._notam=n;markers.push(mk);notamMarkers.push(mk);
+  });
+  // Add departure + destination to bounds
+  if(validCoords(d.departure))pts.push([d.departure.lat,d.departure.lon]);
+  if(validCoords(d.destination))pts.push([d.destination.lat,d.destination.lon]);
+  if(pts.length){
+    leafletMap.fitBounds(L.latLngBounds(pts).pad(0.14));
+  }
+  // Fullscreen button
+  var fsBtn=L.control({position:'topright'});
+  fsBtn.onAdd=function(){
+    var div=L.DomUtil.create('div','leaflet-bar');
+    div.innerHTML='<a href="#" title="Toggle fullscreen" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;font-size:18px;background:#fff;text-decoration:none;color:#333" onclick="toggleMapFullscreen(event)">⛶</a>';
+    return div;
+  };
+  fsBtn.addTo(leafletMap);
+}
+
+// ══ MAP FULLSCREEN + NOTAM PANEL ══
+function toggleMapFullscreen(e){
+  if(e)e.preventDefault();if(e)e.stopPropagation();
+  var panel=document.getElementById('mapPanel');
+  if(!panel)return;
+  panel.classList.toggle('fullscreen');
+  setTimeout(function(){if(leafletMap)leafletMap.invalidateSize();},100);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var panel=document.getElementById('mapPanel');
+    if(panel&&panel.classList.contains('fullscreen')){
+      panel.classList.remove('fullscreen');
+      setTimeout(function(){if(leafletMap)leafletMap.invalidateSize();},100);
+    }
+    closeMapNotam();
+  }
+});
+
+function showMapNotam(notam){
+  var panel=document.getElementById('mapNotamPanel');
+  var body=document.getElementById('mnpBody');
+  var title=document.getElementById('mnpTitle');
+  if(!panel||!body)return;
+
+  // Find all NOTAMs for this airport/location
+  var airport=notam.airport||'';
+  var relatedNotams=[];
+  if(airport&&flightData&&flightData.notams){
+    flightData.notams.forEach(function(n){
+      if(n.airport===airport) relatedNotams.push(n);
+    });
+  }
+  if(relatedNotams.length===0) relatedNotams=[notam];
+
+  title.textContent=airport?airport+' — '+relatedNotams.length+' NOTAM(s)':'NOTAM';
+
+  var h='';
+  relatedNotams.forEach(function(n){
+    var sevClass=(n.severity||'advisory').toLowerCase();
+    h+='<div class="mnp-item">';
+    h+='<div style="margin-bottom:4px"><span class="mnp-sev '+sevClass+'">'+esc(n.severity||'')+'</span>';
+    h+='<span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text2)">'+esc(n.id||'')+'</span>';
+    h+='<span style="font-size:10px;color:var(--text3);margin-left:8px">'+esc(n.phase||'')+'</span></div>';
+    h+='<div style="font-size:12px;color:var(--text);line-height:1.5">'+esc(n.subject||n.fullText||'')+'</div>';
+    if(n.fullText&&n.fullText.length>80){
+      h+='<details style="margin-top:4px"><summary style="font-size:10px;color:var(--blue);cursor:pointer">Full text</summary>';
+      h+='<div style="font-size:11px;color:var(--text2);margin-top:4px;white-space:pre-wrap;font-family:var(--mono);line-height:1.6;max-height:200px;overflow-y:auto">'+esc(n.fullText)+'</div></details>';
+    }
+    if(n.validFrom||n.validTo){
+      h+='<div style="font-size:10px;color:var(--text3);margin-top:4px">'+fmtT(n.validFrom)+' → '+(n.validTo?fmtT(n.validTo):'PERM')+'</div>';
+    }
+    h+='</div>';
+  });
+  body.innerHTML=h;
+  panel.classList.add('open');
+}
+
+function closeMapNotam(){
+  var panel=document.getElementById('mapNotamPanel');
+  if(panel) panel.classList.remove('open');
 }
 
 // ══ SAVE OFFLINE ══
