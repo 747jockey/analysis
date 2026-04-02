@@ -1650,12 +1650,22 @@ function parseNavLog(text){
     var afterNameStart=chunk.indexOf(nameM[0])+nameM[0].length;
     var afterName=chunk.substring(afterNameStart);
     var boKg=null;
+    var pfl=null; // planned flight level: number (e.g. 320) or 'CLB' or 'DSC'
     var allNums=afterName.match(/\b(\d{4,6})\b/g);
     if(allNums){
       for(var k=allNums.length-1;k>=0;k--){
         var n=parseInt(allNums[k]);
         if(n>=1000&&n<200000){boKg=n;break;}
       }
+    }
+    // Extract PFL: look for CLB/DSC or 3-digit FL near the BO value
+    var pflMatch=afterName.match(/\b(CLB|DSC)\b/);
+    if(pflMatch){
+      pfl=pflMatch[1];
+    } else {
+      // Find 3-digit FL: pattern like "488 321 8463" — PFL is before BO
+      var pflNumMatch=afterName.match(/\b(\d{3})\s+(\d{3})\s+\d{4,6}\b/);
+      if(pflNumMatch) pfl=parseInt(pflNumMatch[2]); // second 3-digit = PFL
     }
 
     // TOC burn-off
@@ -1667,7 +1677,7 @@ function parseNavLog(text){
       console.log('[MORA] TOC BO selected:', boKg);
     }
 
-    waypoints.push({name:wptName, mora:mora, boKg:boKg, lat:lat, lon:lon});
+    waypoints.push({name:wptName, mora:mora, boKg:boKg, pfl:pfl, lat:lat, lon:lon});
   }
 
   // ── Find highest MORA ──
@@ -2480,6 +2490,113 @@ function renderPerf(){
     <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:#fff">${fmtW(rampWt)}</div>
     </div></div>`;
 
+  // ══ FLIGHT PROFILE CHART ══
+  if(navLogData&&navLogData.waypoints&&navLogData.waypoints.length>5){
+    var wpts=navLogData.waypoints;
+    var depElevFt=d.depElevFt||0;
+    var destElevFt=d.destElevFt||0;
+    var profileData=[];
+    var firstCruiseFL=null,lastCruiseFL=null,tocIdx=-1,todIdx=-1;
+    wpts.forEach(function(w,i){
+      if(w.name==='-TOC-')tocIdx=i;
+      if(w.name==='-TOD-')todIdx=i;
+      if(typeof w.pfl==='number'&&w.pfl>=100){if(firstCruiseFL===null)firstCruiseFL=w.pfl;lastCruiseFL=w.pfl;}
+    });
+    if(!firstCruiseFL)firstCruiseFL=320;if(!lastCruiseFL)lastCruiseFL=firstCruiseFL;
+    wpts.forEach(function(w,i){
+      var altFt=0;
+      if(w.pfl==='CLB'){
+        var ce=tocIdx>=0?tocIdx:10;var frac=ce>0?i/ce:0;if(frac>1)frac=1;
+        altFt=depElevFt+frac*(firstCruiseFL*100-depElevFt);
+      }else if(w.pfl==='DSC'){
+        var ds=todIdx>=0?todIdx:wpts.length-10;var dl=wpts.length-1-ds;
+        var frac=dl>0?(i-ds)/dl:1;if(frac<0)frac=0;if(frac>1)frac=1;
+        altFt=lastCruiseFL*100-frac*(lastCruiseFL*100-destElevFt);
+      }else if(typeof w.pfl==='number'){altFt=w.pfl*100;}
+      var gw=w.boKg!=null?rampWt-w.boKg:null;
+      var optHere=gw&&gw>100000?perfInterp(optAltTable,gw,1):null;
+      profileData.push({name:w.name,altFt:Math.round(altFt),optAlt:optHere,gw:gw,idx:i,moraFt:w.mora?w.mora*100:0});
+    });
+    var svgW=860,svgH=280,pL=55,pR=20,pT=25,pB=55;
+    var plW=svgW-pL-pR,plH=svgH-pT-pB;
+    var maxA=0;profileData.forEach(function(p){if(p.altFt>maxA)maxA=p.altFt;if(p.optAlt&&p.optAlt>maxA)maxA=p.optAlt;});
+    maxA=Math.ceil(maxA/5000)*5000+2000;
+    var yP=function(a){return pT+plH-a/maxA*plH;};
+    var xP=function(i){return pL+(i/(profileData.length-1))*plW;};
+    var lbl=Math.max(1,Math.floor(profileData.length/25));
+    var svg='<svg viewBox="0 0 '+svgW+' '+svgH+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:var(--sans)">';
+    svg+='<rect x="0" y="0" width="'+svgW+'" height="'+svgH+'" fill="#f8fafc" rx="8"/>';
+    for(var fl=0;fl<=maxA;fl+=5000){var y=yP(fl);
+      svg+='<line x1="'+pL+'" y1="'+y+'" x2="'+(svgW-pR)+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>';
+      svg+='<text x="'+(pL-5)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8" font-family="var(--mono)">FL'+Math.round(fl/100)+'</text>';
+    }
+    var pp='M';profileData.forEach(function(p,i){pp+=(i>0?'L':'')+xP(i).toFixed(1)+','+yP(p.altFt).toFixed(1);});
+    var fp=pp+'L'+xP(profileData.length-1).toFixed(1)+','+yP(0).toFixed(1)+'L'+xP(0).toFixed(1)+','+yP(0).toFixed(1)+'Z';
+    svg+='<path d="'+fp+'" fill="rgba(15,35,64,0.08)"/>';
+    svg+='<path d="'+pp+'" fill="none" stroke="#0f2340" stroke-width="2.5" stroke-linejoin="round"/>';
+    var op='';profileData.forEach(function(p,i){if(p.optAlt&&p.altFt>1000){op+=(op?'L':'M')+xP(i).toFixed(1)+','+yP(p.optAlt).toFixed(1);}});
+    if(op)svg+='<path d="'+op+'" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.8"/>';
+    // Terrain profile (MORA) — red filled area
+    var tp='M'+xP(0).toFixed(1)+','+yP(0).toFixed(1);
+    profileData.forEach(function(p,i){tp+='L'+xP(i).toFixed(1)+','+yP(p.moraFt).toFixed(1);});
+    tp+='L'+xP(profileData.length-1).toFixed(1)+','+yP(0).toFixed(1)+'Z';
+    svg+='<path d="'+tp+'" fill="rgba(220,38,38,0.1)"/>';
+    // Terrain line
+    var tl='M';profileData.forEach(function(p,i){tl+=(i>0?'L':'')+xP(i).toFixed(1)+','+yP(p.moraFt).toFixed(1);});
+    svg+='<path d="'+tl+'" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>';
+    // Pilot rest bands — from duty planner rest schedule
+    if(window._restSchedule&&window._restSchedule.pilots.length>0){
+      var rs=window._restSchedule;
+      var totalWpts=profileData.length;
+      var restColors=['rgba(13,148,136,0.12)','rgba(2,132,199,0.12)','rgba(124,58,237,0.12)','rgba(194,65,12,0.12)'];
+      var restBorders=['#0d9488','#0284c7','#7c3aed','#c2410c'];
+      rs.pilots.forEach(function(pilot,pi){
+        // Convert minutes after takeoff to waypoint X position
+        var xStart=pL+(pilot.start/rs.airTime)*plW;
+        var xEnd=pL+(pilot.end/rs.airTime)*plW;
+        var w=xEnd-xStart;
+        var col=restColors[pi%4];
+        var bCol=restBorders[pi%4];
+        // Draw band from top to bottom of plot area
+        svg+='<rect x="'+xStart.toFixed(1)+'" y="'+pT+'" width="'+w.toFixed(1)+'" height="'+plH+'" fill="'+col+'" rx="3"/>';
+        svg+='<line x1="'+xStart.toFixed(1)+'" y1="'+pT+'" x2="'+xStart.toFixed(1)+'" y2="'+(pT+plH)+'" stroke="'+bCol+'" stroke-width="0.8" opacity="0.5"/>';
+        svg+='<line x1="'+xEnd.toFixed(1)+'" y1="'+pT+'" x2="'+xEnd.toFixed(1)+'" y2="'+(pT+plH)+'" stroke="'+bCol+'" stroke-width="0.8" opacity="0.5"/>';
+        // Label at top
+        var labelX=xStart+(w/2);
+        svg+='<text x="'+labelX.toFixed(1)+'" y="'+(pT+12)+'" text-anchor="middle" font-size="7" font-weight="700" fill="'+bCol+'">P'+(pi+1)+' REST</text>';
+      });
+    }
+    profileData.forEach(function(p,i){if(p.name==='-TOC-'||p.name==='-TOD-'){var x=xP(i),y2=yP(p.altFt);
+      svg+='<line x1="'+x+'" y1="'+y2+'" x2="'+x+'" y2="'+(pT+plH)+'" stroke="#d97706" stroke-width="1" stroke-dasharray="3 3"/>';
+      svg+='<text x="'+x+'" y="'+(y2-6)+'" text-anchor="middle" font-size="8" font-weight="700" fill="#d97706">'+(p.name==='-TOC-'?'TOC':'TOD')+'</text>';}
+    });
+    profileData.forEach(function(p,i){
+      var isKey=p.name==='-TOC-'||p.name==='-TOD-'||i===0||i===profileData.length-1;
+      if(!isKey&&i%lbl!==0)return;
+      var x=xP(i),label=p.name.replace(/^-/,'').replace(/-$/,'');
+      if(label.length>6)label=label.substring(0,6);
+      svg+='<text x="'+x+'" y="'+(svgH-pB+12)+'" text-anchor="middle" font-size="7" fill="#64748b" transform="rotate(-45,'+x+','+(svgH-pB+12)+')">'+label+'</text>';
+    });
+    svg+='<rect x="'+(pL+10)+'" y="'+(pT+2)+'" width="12" height="3" fill="#0f2340" rx="1"/>';
+    svg+='<text x="'+(pL+26)+'" y="'+(pT+6)+'" font-size="8" fill="#0f2340" font-weight="600">Flight Profile</text>';
+    svg+='<line x1="'+(pL+110)+'" y1="'+(pT+4)+'" x2="'+(pL+122)+'" y2="'+(pT+4)+'" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4 3"/>';
+    svg+='<text x="'+(pL+126)+'" y="'+(pT+6)+'" font-size="8" fill="#16a34a" font-weight="600">Optimum Altitude</text>';
+    svg+='<line x1="'+(pL+220)+'" y1="'+(pT+4)+'" x2="'+(pL+232)+'" y2="'+(pT+4)+'" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>';
+    svg+='<text x="'+(pL+236)+'" y="'+(pT+6)+'" font-size="8" fill="#dc2626" font-weight="600">Terrain (MORA)</text>';
+    if(window._restSchedule&&window._restSchedule.pilots.length>0){
+      svg+='<rect x="'+(pL+330)+'" y="'+(pT)+'" width="12" height="8" fill="rgba(13,148,136,0.2)" stroke="#0d9488" stroke-width="0.5" rx="1"/>';
+      svg+='<text x="'+(pL+346)+'" y="'+(pT+6)+'" font-size="8" fill="#0d9488" font-weight="600">Crew Rest</text>';
+    }
+    svg+='</svg>';
+    h+=`<div class="perf-card" style="margin-bottom:16px">
+      <div style="padding:12px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--navy);letter-spacing:1px;text-transform:uppercase">Flight Profile — ${esc(d.registration||'')} · ${wpts.length} waypoints</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Navy = flight profile · Green dashed = optimum altitude · Red dashed = terrain · Shaded bands = crew rest</div>
+      </div>
+      <div style="padding:10px 16px;overflow-x:auto">${svg}</div>
+    </div>`;
+  }
+
   // ══ WEIGHTS (Feature 2 cascade) ══
   h+=`<div class="perf-card" style="margin-bottom:16px">
     <div style="padding:12px 20px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">Aircraft Weights</div>`;
@@ -3207,6 +3324,7 @@ function calcRest(){
 
   // Timeline for each pilot
   var currentOffset=startMins;
+  window._restSchedule={pilots:[],airTime:airTime}; // store for chart
   for(var p=0;p<numPilots;p++){
     var restStart=currentOffset;
     var restEnd=currentOffset+eachRest;
@@ -3215,6 +3333,7 @@ function calcRest(){
     var thisRest=restEnd-restStart;
     var pctStart=(restStart/airTime*100).toFixed(1);
     var pctWidth=(thisRest/airTime*100).toFixed(1);
+    window._restSchedule.pilots.push({start:restStart,end:restEnd,duration:thisRest});
 
     var colors=['#0d9488','#0284c7','#7c3aed','#c2410c'];
     var col=colors[p%4];
@@ -3242,6 +3361,8 @@ function calcRest(){
   h+='</div></div>';
 
   res.innerHTML=h;
+  // Re-render performance chart to show rest bands
+  if(perfData) renderPerf();
 }
 
 function buildT73(){
